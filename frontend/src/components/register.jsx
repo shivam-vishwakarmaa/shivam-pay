@@ -11,17 +11,19 @@ export default () => {
   const [response,setResponse] = useState('');
 
   const handleRegiester = async () => {
-    setResponse("Loading...") ;
+    try{
+        setResponse("Loading...") ;
 
-    const Registercall = await axios.post(
-      "http://localhost:3000/pytm/register/enter",
-      form
-    );
-
-    if(Registercall.data.user)
+        const Registercall = await axios.post(
+        "http://localhost:3000/pytm/register/enter",
+        form
+        );
         setResponse(`congratulation ${Registercall.data.user.name} you have created you account `) ;
-    else  setResponse(Registercall.data.message) ;
-
+    } catch (err){
+        setResponse(
+            err.response?.data?.message || "Something went wrong, try again"
+        )
+    }
   };
 
   return (
@@ -53,7 +55,7 @@ export default () => {
             password : e.target.value
         })}
       /> <br />
-      <button onClick = {handleRegiester}>send</button>
+      <button onClick = {handleRegiester}>Register</button>
       <h1>{response}</h1>
     </div>
   );

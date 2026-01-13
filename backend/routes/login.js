@@ -41,7 +41,7 @@ loginRouter.put("/enter", async (req, res) => {
 
   res.status(200).json({
     message: "Welcome back",
-    token,
+    token : token
   });
 });
 
