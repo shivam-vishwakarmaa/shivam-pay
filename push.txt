@@ -5,3 +5,5 @@ git push
 
 addd one more feature that is when i make payment for a perticular loaction everyday at same location then i dont have to scan another time my app
 simp;ly fetch the loctioaj and tell me ui that person yu have send the payment before too so it is the samse user ??? this is cool fetures brooo
+
+add one more feature that is recongnissing in whic area we are spending most of the amount 
