@@ -1,7 +1,7 @@
 import axios from 'axios' ;
 import { useState } from "react";
 
-export default () => {
+export default ({ gotoTransictoin }) => {
 
   const [form, setFormdata] = useState({
     name : '',
@@ -18,7 +18,9 @@ export default () => {
         "http://localhost:3000/pytm/register/enter",
         form
         );
-        setResponse(`congratulation ${Registercall.data.user.name} you have created you account `) ;
+        setResponse(`congratulation ${Registercall.data.user.name} you have created your account `) ;
+        gotoTransictoin() ;
+        
     } catch (err){
         setResponse(
             err.response?.data?.message || "Something went wrong, try again"

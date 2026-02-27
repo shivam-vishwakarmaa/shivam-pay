@@ -10,7 +10,7 @@ router.get("/allusers", authMiddlerware, async (req, res) => {
     res.send(users);
   } catch (e) {
     res.status(411).json({
-      messaage: "somehing happend while fetching fron databse !",
+      messaage: "somthing happend while fetching fron databse !",
     });
   }
 });

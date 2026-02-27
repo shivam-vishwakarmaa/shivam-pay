@@ -1,7 +1,7 @@
 import { useState } from "react"
 import axios from "axios";
 
-export default () => {
+export default ({ gotoTransictoin }) => {
 
     const [form,setForm] = useState({
         username:'',
@@ -22,6 +22,7 @@ export default () => {
 
             setResponse(`You have login succesfully !!!`);
             localStorage.setItem("token", fecthLogin.data.token);
+            gotoTransictoin() ;
 
         } catch(err){
             setResponse(
