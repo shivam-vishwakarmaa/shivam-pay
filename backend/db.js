@@ -12,12 +12,21 @@ const userSchema = mongoose.Schema({
         required: true,
         default: 1000
     },
-    loangiven : String,
-    loantaken : String,
+})
+
+const loanSchema = mongoose.Schema({
+    lenderId : String,
+    borrowerId : String,
+    principalAmount : String,
+    interestRate : String,
+    status : String,
+    createdAt : String
 })
 
 const User = mongoose.model("User", userSchema);
+const LoanInfo = mongoose.model("LoanInfo",loanSchema) ; 
 
 module.exports = {
-    User
+    User,
+    LoanInfo
 }
