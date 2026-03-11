@@ -6,7 +6,7 @@ const bcrypt = require("bcrypt");
 const userSchema = z.object({
   name: z.string().min(3).max(10),
   username: z.string().min(3).max(15),
-  password: z.string().min(3).max(6),
+  password: z.string().min(3).max(30),
 });
 
 const registerRouter = express.Router();
