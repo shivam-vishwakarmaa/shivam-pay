@@ -40,7 +40,6 @@ registerRouter.post("/enter", async(req, res) => {
     loantaken : 0
   })
 
-
   res.status(200).json({
     message: "You have created your account",
     user: { name, username, hashpasssword },
