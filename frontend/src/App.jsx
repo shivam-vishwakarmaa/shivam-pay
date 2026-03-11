@@ -4,7 +4,7 @@ import Login from './components/login';
 import Transiction from './components/transictions';
 
 function App() {
-  const [page, setPage] = useState(null); 
+  const [page, setPage] = useState(null);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">

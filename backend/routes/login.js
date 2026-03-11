@@ -8,8 +8,8 @@ const { User } = require("../db");
 const SECRET_KEY = "shivam";
 
 const userSchema = z.object({
-  username: z.string().min(3).max(15),
-  password: z.string().min(3).max(6),
+  username: z.string().min(3).max(300),
+  password: z.string().min(3).max(30),
 });
 
 loginRouter.put("/enter", async (req, res) => {
