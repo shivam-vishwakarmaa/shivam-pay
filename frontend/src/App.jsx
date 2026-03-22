@@ -1,60 +1,82 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Register from './components/register';
 import Login from './components/login';
 import Transiction from './components/transictions';
 
 function App() {
-  const [page, setPage] = useState(null);
+  const [page, setPage] = useState('landing');
+  
+  // Check if token exists on load
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      setPage('transiction');
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    setPage('login');
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-      {/* Main Card Container */}
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        
-        {/* Header Section */}
-        <div className="bg-blue-600 p-6 text-white text-center">
-          <h1 className="text-3xl font-bold tracking-tight">ShivamPay</h1>
-          <p className="text-blue-100 mt-2 text-sm">Secure. Fast. Reliable.</p>
-        </div>
-
-        {/* Dynamic Content Area */}
-        <div className="p-8">
-          {page === null && (
-            <div className="flex flex-col gap-4">
-              <button 
-                onClick={() => setPage('register')}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 ease-in-out shadow-md"
-              >
-                Create Account
-              </button>
-              <button 
-                onClick={() => setPage('login')}
-                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-3 px-4 rounded-lg transition duration-200 ease-in-out border border-gray-300"
-              >
-                Log In
-              </button>
-              
-              <div className="mt-6 border-t border-gray-200 pt-6">
-                <p className="text-sm text-gray-500 text-center mb-4">Quick Send</p>
-                <div className="flex items-center justify-center space-x-4">
-                  {/* Mockup Quick Contact */}
-                  <div className="flex flex-col items-center cursor-pointer hover:opacity-80 transition">
-                    <div className="w-12 h-12 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center font-bold text-lg mb-1">
-                      G
-                    </div>
-                    <span className="text-xs font-medium text-gray-600">Gargi</span>
-                  </div>
-                </div>
+    <div className="min-h-screen bg-[#0b0e14]">
+      {page === 'landing' && (
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden text-white">
+           <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-purple-600/10 rounded-full blur-[140px] animate-blob"></div>
+           <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-indigo-600/10 rounded-full blur-[140px] animate-blob animation-delay-2000"></div>
+           
+           <div className="relative z-10 text-center space-y-8 max-w-lg">
+              <div className="w-24 h-24 bg-gradient-to-tr from-purple-500 via-indigo-600 to-indigo-800 rounded-[32px] mx-auto flex items-center justify-center shadow-2xl shadow-indigo-500/20 mb-4 animate-in zoom-in duration-700">
+                <span className="text-white text-4xl font-black tracking-tighter">SP</span>
               </div>
-            </div>
-          )}
+              <div className="space-y-4">
+                <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500">
+                  ShivamPay.
+                </h1>
+                <p className="text-gray-400 text-lg sm:text-xl px-4 font-medium leading-relaxed">
+                  The future of payments is here. Fast, secure, and beautiful commerce for everyone.
+                </p>
+              </div>
 
-          {/* Existing Components */}
-          {page === 'register' && <Register gotoTransictoin={() => setPage('transiction')}/>}
-          {page === 'login' && <Login gotoTransictoin={() => setPage('transiction')}/>}
-          {page === 'transiction' && <Transiction />}
+              <div className="flex flex-col sm:flex-row gap-4 pt-8 animate-in slide-in-from-bottom-8 duration-1000">
+                <button 
+                  onClick={() => setPage('register')}
+                  className="px-10 py-4 bg-white text-black font-bold rounded-2xl hover:bg-gray-200 transition-all shadow-xl shadow-white/5 active:scale-95"
+                >
+                  Get Started
+                </button>
+                <button 
+                  onClick={() => setPage('login')}
+                  className="px-10 py-4 bg-gray-800/50 text-white font-bold rounded-2xl hover:bg-gray-800 transition-all border border-white/10 active:scale-95 backdrop-blur-md"
+                >
+                  Existing User
+                </button>
+              </div>
+           </div>
         </div>
-      </div>
+      )}
+
+      {page === 'register' && (
+        <div className="min-h-screen flex items-center justify-center bg-[#0b0e14]">
+          <Register 
+            gotoTransictoin={() => setPage('transiction')} 
+            onGoToLogin={() => setPage('login')}
+          />
+        </div>
+      )}
+
+      {page === 'login' && (
+        <div className="min-h-screen flex items-center justify-center bg-[#0b0e14]">
+          <Login 
+            gotoTransictoin={() => setPage('transiction')} 
+            onGoToRegister={() => setPage('register')}
+          />
+        </div>
+      )}
+
+      {page === 'transiction' && <Transiction onLogout={handleLogout} />}
     </div>
   );
 }

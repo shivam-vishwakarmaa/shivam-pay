@@ -4,9 +4,10 @@ const mongoose = require("mongoose");
 const { User } = require("../db");
 const authMiddleware = require("../Middlewares/jwt");
 
-Router.post("/payment", async (req, res) => {
+Router.post("/payment", authMiddleware, async (req, res) => {
   const session = await mongoose.startSession();
-  const { senderId, receiverId, amount } = req.body;
+  const { receiverId, amount } = req.body;
+  const senderId = req.user.userId;
 
   if (!senderId || !receiverId || amount <= 0) {
     return res.status(400).json({ success: false, message: "Invalid input" });
