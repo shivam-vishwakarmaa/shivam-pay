@@ -1,10 +1,11 @@
 const express = require("express");
-const Router = express.Router();
+const router = express.Router();
 const mongoose = require("mongoose");
-const { User } = require("../db");
-const authMiddleware = require("../Middlewares/jwt");
+const User = require("../models/User.model");
+const authMiddleware = require("../middlewares/auth.middleware");
 
-Router.post("/payment", authMiddleware, async (req, res) => {
+// Transfer money
+router.post("/payment", authMiddleware, async (req, res) => {
   const session = await mongoose.startSession();
   const { receiverId, amount } = req.body;
   const senderId = req.user.userId;
@@ -54,4 +55,4 @@ Router.post("/payment", authMiddleware, async (req, res) => {
   }
 });
 
-module.exports = Router;
+module.exports = router;
