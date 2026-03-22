@@ -73,13 +73,16 @@ A high-fidelity, premium fintech application designed for the modern era. Shivam
 ```text
 shivam-pay/
 ├── backend/            # Express server and database models
-│   ├── routes/         # API endpoints
-│   ├── Middlewares/    # Authentication logic
-│   └── db.js           # Mongoose configuration
+│   ├── src/
+│   │   ├── config/     # Database configuration
+│   │   ├── middlewares/# Authentication logic
+│   │   ├── models/     # Mongoose schemas
+│   │   └── routes/     # API endpoints
+│   └── server.js       # Entry point
 ├── frontend/           # Vite + React application
 │   ├── src/
-│   │   ├── components/ # UI Components (Login, Dashboard, etc.)
-│   │   ├── assets/     # Static assets
+│   │   ├── components/ # UI Components (auth, layout)
+│   │   ├── pages/      # Full views (Dashboard, Login, Landing)
 │   │   └── App.jsx     # Main application routing
 └── README.md           # Documentation
 ```

@@ -1,7 +1,9 @@
 import axios from 'axios';
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-export default function Register({ gotoTransictoin, onGoToLogin }) {
+export default function RegisterPage() {
+  const navigate = useNavigate();
   const [form, setFormdata] = useState({
     name: '',
     username: '',
@@ -25,7 +27,7 @@ export default function Register({ gotoTransictoin, onGoToLogin }) {
         setIsLoading(false);
         
         setTimeout(() => {
-            gotoTransictoin();
+            navigate('/dashboard');
         }, 1200);
         
     } catch (err) {
@@ -105,7 +107,7 @@ export default function Register({ gotoTransictoin, onGoToLogin }) {
                 Already have an account?{" "}
                 <button 
                   type="button"
-                  onClick={onGoToLogin}
+                  onClick={() => navigate('/login')}
                   className="text-purple-400 font-semibold hover:text-purple-300 decoration-purple-400/30 underline-offset-4 hover:underline"
                 >
                   Log In

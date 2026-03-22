@@ -1,7 +1,9 @@
 import { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
-export default function Login({ gotoTransictoin, onGoToRegister }) {
+export default function LoginPage() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     username: "",
     password: "",
@@ -25,7 +27,7 @@ export default function Login({ gotoTransictoin, onGoToRegister }) {
       setIsLoading(false);
 
       setTimeout(() => {
-        gotoTransictoin();
+        navigate('/dashboard');
       }, 800);
     } catch (err) {
       setIsLoading(false);
@@ -107,7 +109,7 @@ export default function Login({ gotoTransictoin, onGoToRegister }) {
             Don't have an account?{" "}
             <button 
               type="button"
-              onClick={onGoToRegister}
+              onClick={() => navigate('/register')}
               className="text-purple-400 font-semibold hover:text-purple-300 decoration-purple-400/30 underline-offset-4 hover:underline"
             >
               Sign Up
