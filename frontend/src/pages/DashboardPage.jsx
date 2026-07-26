@@ -1,1436 +1,1123 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import confetti from "canvas-confetti";
-import {
-  Wallet,
-  QrCode,
-  Send,
-  HandCoins,
-  ReceiptText,
-  Bell,
-  ShieldCheck,
-  ArrowUpRight,
-  ArrowDownLeft,
-  Zap,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  LogOut,
-  Sparkles,
-  Search,
-  Building2,
-  Lock,
-  RefreshCw,
-  Mail,
-  ExternalLink,
-  CreditCard,
-  DollarSign
-} from "lucide-react";
+
+// ─── Icons (inline SVG components for zero extra deps) ─────────────────────
+const Icon = ({ d, size = 18, stroke = "currentColor", fill = "none", sw = "1.8" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+    {Array.isArray(d) ? d.map((p, i) => <path key={i} d={p} />) : <path d={d} />}
+  </svg>
+);
+
+const icons = {
+  home:     "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10",
+  send:     "M22 2L11 13 M22 2L15 22 8 13 2 9z",
+  loan:     ["M12 2v20","M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"],
+  history:  ["M3 3h18v4H3z","M3 10h18v4H3z","M3 17h18v4H3z"],
+  bell:     ["M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9","M13.73 21a2 2 0 0 1-3.46 0"],
+  logout:   ["M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4","M16 17l5-5-5-5","M21 12H9"],
+  qr:       ["M3 3h7v7H3z","M14 3h7v7h-7z","M3 14h7v7H3z","M14 14h1v1h-1z","M18 14h3","M14 18h1v3h-1z","M18 18h3v3h-3z","M18 21v-3"],
+  wallet:   ["M21 12V7H5a2 2 0 0 1 0-4h14v4","M3 5v14a2 2 0 0 0 2 2h16v-5","M18 12a2 2 0 0 0 0 4h4v-4z"],
+  plus:     "M12 5v14M5 12h14",
+  check:    "M20 6L9 17l-5-5",
+  x:        "M18 6L6 18M6 6l12 12",
+  arrow_up: "M12 19V5M5 12l7-7 7 7",
+  arrow_dn: "M12 5v14M5 12l7 7 7-7",
+  search:   ["M21 21l-4.35-4.35","M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0"],
+  alert:    ["M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z","M12 9v4","M12 17h.01"],
+  eye:      ["M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8","M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6"],
+  zap:      "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
+  bank:     ["M3 22h18","M6 18V11","M10 18V11","M14 18V11","M18 18V11","M12 2L2 7h20L12 2z"],
+  copy:     ["M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2","M8 4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z"],
+  settings: ["M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z","M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"],
+  receipt:  ["M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z","M14 2v6h6","M16 13H8","M16 17H8","M10 9H8"],
+};
+
+const API = "http://localhost:3000/pytm";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  
-  // State for user & core balances
-  const [userInfo, setUserInfo] = useState({
-    bankbalance: 0,
-    name: "User",
-    username: "username",
-    email: "",
-    upiId: "user@shivampay",
-    linkedBank: "HDFC Bank - **** 8824"
-  });
-  
-  // Tab control: 'HOME' | 'LOANS' | 'HISTORY' | 'NOTIFICATIONS'
-  const [activeTab, setActiveTab] = useState("HOME");
+  const token = localStorage.getItem("token");
+  const auth = { headers: { Authorization: `Bearer ${token}` } };
 
-  // Data arrays
-  const [users, setUsers] = useState([]);
-  const [transactions, setTransactions] = useState([]);
-  const [loans, setLoans] = useState([]);
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [tab, setTab] = useState("HOME");
+  const [user, setUser] = useState({ bankbalance: 0, name: "", username: "", upiId: "", linkedBank: "", email: "" });
+  const [users, setUsers]             = useState([]);
+  const [transactions, setTxns]       = useState([]);
+  const [loans, setLoans]             = useState([]);
+  const [notifications, setNotifs]    = useState([]);
+  const [razorpayConfig, setRzpCfg]   = useState({ isConfigured: false, keyId: null });
+  const [loading, setLoading]         = useState(true);
+  const [refreshing, setRefreshing]   = useState(false);
 
   // Modals
-  const [showSendModal, setShowSendModal] = useState(false);
-  const [showQrModal, setShowQrModal] = useState(false);
-  const [showScanPayModal, setShowScanPayModal] = useState(false);
-  const [showBillModal, setShowBillModal] = useState(false);
-  const [showLoanModal, setShowLoanModal] = useState(false);
-  const [showForecloseModal, setShowForecloseModal] = useState(null); // loan object
-  const [showAcceptModal, setShowAcceptModal] = useState(null); // loan object
-  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [modal, setModal]             = useState(null); // 'send'|'qr'|'scan'|'bill'|'loan'|'topup'|'receipt'|'accept'|'foreclose'|'settings'
+  const [modalData, setModalData]     = useState(null);
 
-  // Send Money Forms
-  const [sendForm, setSendForm] = useState({ receiverIdentifier: "", amount: "", pin: "", description: "" });
-  const [txnStatus, setTxnStatus] = useState({ state: "IDLE", msg: "" });
-  const [searchQuery, setSearchQuery] = useState("");
+  // Form states
+  const [sendForm, setSend]           = useState({ receiverIdentifier: "", amount: "", pin: "", description: "" });
+  const [billForm, setBill]           = useState({ billerName: "Electricity Board", category: "Electricity", amount: "", pin: "", consumerNumber: "" });
+  const [loanForm, setLoan]           = useState({ partnerUsername: "", role: "LENDER", principalAmount: "", interestRate: "5", durationMonths: "6", deductionDayOfMonth: "5", remarks: "" });
+  const [topupAmount, setTopup]       = useState("");
+  const [pinInput, setPin]            = useState("");
+  const [txnState, setTxnState]       = useState({ status: "idle", msg: "" }); // idle|loading|success|error
+  const [searchQ, setSearch]          = useState("");
+  const [copiedUpi, setCopied]        = useState(false);
 
-  // Bill Pay Forms
-  const [billForm, setBillForm] = useState({ billerName: "Electricity Board", category: "Electricity", amount: "150.00", pin: "", consumerNumber: "ENG-899214" });
+  const confettiFire = () => confetti({ particleCount: 80, spread: 65, origin: { y: 0.6 }, colors: ["#6366f1","#10b981","#f59e0b"] });
 
-  // Loan Proposal Forms
-  const [loanForm, setLoanForm] = useState({
-    partnerUsername: "",
-    role: "LENDER", // LENDER (Give loan) or BORROWER (Take loan)
-    principalAmount: "500",
-    interestRate: "5",
-    durationMonths: "6",
-    deductionDayOfMonth: "5",
-    remarks: ""
-  });
-
-  const token = localStorage.getItem("token");
-  const authHeader = { headers: { Authorization: "Bearer " + token } };
-
-  // Initial loads
-  const loadAllData = async () => {
-    if (!token) {
-      navigate('/login');
-      return;
-    }
+  const loadAll = useCallback(async () => {
+    if (!token) { navigate("/login"); return; }
     setRefreshing(true);
     try {
-      const [balRes, usersRes, txnsRes, loansRes, notifRes] = await Promise.all([
-        axios.get("http://localhost:3000/pytm/balance", authHeader).catch(() => ({ data: userInfo })),
-        axios.get("http://localhost:3000/pytm/all/allusers", authHeader).catch(() => ({ data: [] })),
-        axios.get("http://localhost:3000/pytm/trasiction/history", authHeader).catch(() => ({ data: { transactions: [] } })),
-        axios.get("http://localhost:3000/pytm/loans/my-loans", authHeader).catch(() => ({ data: { loans: [] } })),
-        axios.get("http://localhost:3000/pytm/notifications/my-notifications", authHeader).catch(() => ({ data: { notifications: [] } })),
+      const [balR, usersR, txnR, loanR, notifR, rzpR] = await Promise.allSettled([
+        axios.get(`${API}/balance`, auth),
+        axios.get(`${API}/all/allusers`, auth),
+        axios.get(`${API}/trasiction/history`, auth),
+        axios.get(`${API}/loans/my-loans`, auth),
+        axios.get(`${API}/notifications/my-notifications`, auth),
+        axios.get(`${API}/razorpay/config`, auth),
       ]);
+      if (balR.status === "fulfilled") setUser(balR.value.data);
+      if (usersR.status === "fulfilled") setUsers((usersR.value.data || []).filter(u => u.username !== balR.value?.data?.username));
+      if (txnR.status === "fulfilled") setTxns(txnR.value.data.transactions || []);
+      if (loanR.status === "fulfilled") setLoans(loanR.value.data.loans || []);
+      if (notifR.status === "fulfilled") setNotifs(notifR.value.data.notifications || []);
+      if (rzpR.status === "fulfilled") setRzpCfg(rzpR.value.data);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); setRefreshing(false); }
+  }, [token]);
 
-      setUserInfo(balRes.data);
-      setUsers((usersRes.data || []).filter(u => u.username !== balRes.data.username));
-      setTransactions(txnsRes.data.transactions || []);
-      setLoans(loansRes.data.loans || []);
-      setNotifications(notifRes.data.notifications || []);
-    } catch (err) {
-      console.error("Failed to sync dashboard data", err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  useEffect(() => { loadAll(); }, [loadAll]);
 
-  useEffect(() => {
-    loadAllData();
-  }, []);
+  const closeModal = () => { setModal(null); setModalData(null); setTxnState({ status: "idle", msg: "" }); setPin(""); };
+  const openModal = (name, data = null) => { setModal(name); setModalData(data); setTxnState({ status: "idle", msg: "" }); setPin(""); };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate('/login');
-  };
+  const fmt = (n) => `₹${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const triggerConfetti = () => {
-    confetti({
-      particleCount: 80,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ["#E1AAFF", "#00D1FF", "#BD88FF", "#8050FF"]
-    });
-  };
-
-  // UPI Transfer Handler
-  const handleSendMoney = async (e) => {
+  // ── Handlers ────────────────────────────────────────────────────────────────
+  const handleSend = async (e) => {
     e.preventDefault();
-    setTxnStatus({ state: "PROCESSING", msg: "Verifying UPI PIN & Securing Transaction..." });
+    setTxnState({ status: "loading", msg: "Verifying UPI PIN & initiating transfer..." });
     try {
-      const res = await axios.post("http://localhost:3000/pytm/trasiction/payment", sendForm, authHeader);
-      setTxnStatus({ state: "SUCCESS", msg: `Transferred $${sendForm.amount} instantly via UPI!` });
-      triggerConfetti();
-      loadAllData();
-      setTimeout(() => {
-        setShowSendModal(false);
-        setShowScanPayModal(false);
-        setTxnStatus({ state: "IDLE", msg: "" });
-        setSendForm({ receiverIdentifier: "", amount: "", pin: "", description: "" });
-      }, 1800);
-    } catch (err) {
-      setTxnStatus({ state: "ERROR", msg: err.response?.data?.message || "Transfer failed. Check balance or PIN." });
-    }
+      await axios.post(`${API}/trasiction/payment`, sendForm, auth);
+      setTxnState({ status: "success", msg: `${fmt(sendForm.amount)} sent successfully!` });
+      confettiFire(); loadAll();
+      setTimeout(() => { closeModal(); setSend({ receiverIdentifier: "", amount: "", pin: "", description: "" }); }, 1800);
+    } catch (err) { setTxnState({ status: "error", msg: err.response?.data?.message || "Transfer failed." }); }
   };
 
-  // Bill Pay Handler
-  const handlePayBill = async (e) => {
+  const handleBill = async (e) => {
     e.preventDefault();
-    setTxnStatus({ state: "PROCESSING", msg: "Processing instant bill deduction..." });
+    setTxnState({ status: "loading", msg: "Processing bill payment..." });
     try {
-      const res = await axios.post("http://localhost:3000/pytm/trasiction/bills/pay", billForm, authHeader);
-      setTxnStatus({ state: "SUCCESS", msg: `Paid ${billForm.billerName} bill of $${billForm.amount}!` });
-      triggerConfetti();
-      loadAllData();
-      setTimeout(() => {
-        setShowBillModal(false);
-        setTxnStatus({ state: "IDLE", msg: "" });
-      }, 1800);
-    } catch (err) {
-      setTxnStatus({ state: "ERROR", msg: err.response?.data?.message || "Bill payment failed." });
-    }
+      await axios.post(`${API}/trasiction/bills/pay`, billForm, auth);
+      setTxnState({ status: "success", msg: `${billForm.billerName} bill paid — ${fmt(billForm.amount)}!` });
+      confettiFire(); loadAll();
+      setTimeout(closeModal, 1800);
+    } catch (err) { setTxnState({ status: "error", msg: err.response?.data?.message || "Bill payment failed." }); }
   };
 
-  // Loan Proposal Handler
-  const handleCreateLoan = async (e) => {
+  const handleLoan = async (e) => {
     e.preventDefault();
-    setTxnStatus({ state: "PROCESSING", msg: "Submitting financial agreement..." });
+    setTxnState({ status: "loading", msg: "Submitting loan agreement..." });
     try {
-      await axios.post("http://localhost:3000/pytm/loans/propose", loanForm, authHeader);
-      setTxnStatus({ state: "SUCCESS", msg: "Loan proposal created and sent to partner!" });
-      loadAllData();
-      setTimeout(() => {
-        setShowLoanModal(false);
-        setTxnStatus({ state: "IDLE", msg: "" });
-      }, 1500);
+      await axios.post(`${API}/loans/propose`, loanForm, auth);
+      setTxnState({ status: "success", msg: "Loan proposal sent to partner!" });
+      loadAll(); setTimeout(closeModal, 1600);
+    } catch (err) { setTxnState({ status: "error", msg: err.response?.data?.message || "Failed to create loan." }); }
+  };
+
+  const handleAccept = async () => {
+    setTxnState({ status: "loading", msg: "Verifying PIN and dispersing funds..." });
+    try {
+      await axios.post(`${API}/loans/accept/${modalData._id}`, { pin: pinInput }, auth);
+      setTxnState({ status: "success", msg: "Loan active! Funds atomically transferred." });
+      confettiFire(); loadAll(); setTimeout(closeModal, 1800);
+    } catch (err) { setTxnState({ status: "error", msg: err.response?.data?.message || "Acceptance failed." }); }
+  };
+
+  const handleForeclose = async () => {
+    setTxnState({ status: "loading", msg: "Calculating dues and settling loan..." });
+    try {
+      await axios.post(`${API}/loans/foreclose/${modalData._id}`, { pin: pinInput }, auth);
+      setTxnState({ status: "success", msg: "🎉 Loan fully settled — ₹0 closure fees!" });
+      confettiFire(); loadAll(); setTimeout(closeModal, 2000);
+    } catch (err) { setTxnState({ status: "error", msg: err.response?.data?.message || "Foreclosure failed." }); }
+  };
+
+  const handleEmiCron = async () => {
+    setTxnState({ status: "loading", msg: "" });
+    try {
+      const res = await axios.post(`${API}/loans/trigger-cron`, {}, auth);
+      const msgs = (res.data.result?.results || []).map(r => r.message).join("\n") || "No EMIs were due today.";
+      alert(`⚡ EMI Engine Report:\n\n${msgs}\n\nCheck Notifications for dispatched alerts.`);
+      loadAll(); setTxnState({ status: "idle", msg: "" });
+    } catch (e) { alert("EMI Engine error: " + (e.response?.data?.message || e.message)); setTxnState({ status: "idle", msg: "" }); }
+  };
+
+  const handleTopup = async () => {
+    const amount = Number(topupAmount);
+    if (!amount || amount < 1) { setTxnState({ status: "error", msg: "Enter a valid amount (min ₹1)." }); return; }
+    if (!razorpayConfig.isConfigured || !razorpayConfig.keyId) {
+      setTxnState({ status: "error", msg: "Razorpay is not configured yet. Add your API keys to backend/.env to enable real payments." });
+      return;
+    }
+    setTxnState({ status: "loading", msg: "Creating secure payment order..." });
+    try {
+      const orderRes = await axios.post(`${API}/razorpay/create-order`, { amount }, auth);
+      const { orderId, amount: orderAmount, currency } = orderRes.data;
+      const options = {
+        key: razorpayConfig.keyId,
+        amount: orderAmount,
+        currency,
+        name: "ShivamPay",
+        description: "Wallet Top-Up",
+        order_id: orderId,
+        handler: async (response) => {
+          setTxnState({ status: "loading", msg: "Verifying payment..." });
+          try {
+            const verifyRes = await axios.post(`${API}/razorpay/verify`, {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              amount: orderAmount,
+            }, auth);
+            setTxnState({ status: "success", msg: verifyRes.data.message });
+            confettiFire(); loadAll();
+            setTimeout(closeModal, 2000);
+          } catch (err) {
+            setTxnState({ status: "error", msg: err.response?.data?.message || "Payment verification failed." });
+          }
+        },
+        prefill: { name: user.name, email: user.email },
+        theme: { color: "#6366f1" },
+        modal: { ondismiss: () => setTxnState({ status: "idle", msg: "" }) },
+      };
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+      setTxnState({ status: "idle", msg: "" });
     } catch (err) {
-      setTxnStatus({ state: "ERROR", msg: err.response?.data?.message || "Failed to initiate loan." });
+      setTxnState({ status: "error", msg: err.response?.data?.message || "Failed to initiate payment." });
     }
   };
 
-  // Loan Acceptance & Dispersal
-  const handleAcceptLoan = async (pin) => {
-    setTxnStatus({ state: "PROCESSING", msg: "Verifying atomic balance transfer..." });
-    try {
-      await axios.post(`http://localhost:3000/pytm/loans/accept/${showAcceptModal._id}`, { pin }, authHeader);
-      setTxnStatus({ state: "SUCCESS", msg: "Loan active! Principal funds atomically credited." });
-      triggerConfetti();
-      loadAllData();
-      setTimeout(() => {
-        setShowAcceptModal(null);
-        setTxnStatus({ state: "IDLE", msg: "" });
-      }, 1600);
-    } catch (err) {
-      setTxnStatus({ state: "ERROR", msg: err.response?.data?.message || "Failed to accept loan." });
-    }
+  const copyUpi = () => {
+    navigator.clipboard.writeText(user.upiId || `${user.username}@shivampay`);
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
   };
 
-  // Foreclosure (Zero fee prepayment of full dues at once)
-  const handleForeclose = async (pin) => {
-    setTxnStatus({ state: "PROCESSING", msg: "Calculating total dues & processing zero-fee foreclosure..." });
-    try {
-      await axios.post(`http://localhost:3000/pytm/loans/foreclose/${showForecloseModal._id}`, { pin }, authHeader);
-      setTxnStatus({ state: "SUCCESS", msg: "🎉 Foreclosure Complete! All debt settled with $0 extra fees!" });
-      triggerConfetti();
-      loadAllData();
-      setTimeout(() => {
-        setShowForecloseModal(null);
-        setTxnStatus({ state: "IDLE", msg: "" });
-      }, 2000);
-    } catch (err) {
-      setTxnStatus({ state: "ERROR", msg: err.response?.data?.message || "Foreclosure transfer failed." });
-    }
-  };
-
-  // Test Run Auto EMI Cron Engine Now!
-  const handleSimulateEmiCron = async () => {
-    setTxnStatus({ state: "PROCESSING", msg: "Simulating automated daily midnight EMI withdrawal engine..." });
-    try {
-      const res = await axios.post("http://localhost:3000/pytm/loans/trigger-cron", {}, authHeader);
-      const report = res.data.result.results.map(r => r.message).join("\n") || "No active loans due or processed.";
-      alert(`🕒 Automated EMI Engine Report:\n\n${report}\n\nCheck Notifications tab for dispatched emails if any balance was insufficient!`);
-      loadAllData();
-      setTxnStatus({ state: "IDLE", msg: "" });
-    } catch (err) {
-      alert("Failed to run EMI engine: " + (err.response?.data?.message || err.message));
-      setTxnStatus({ state: "IDLE", msg: "" });
-    }
-  };
-
-  // EMI Math Preview calculation for loan form
-  const calcPrincipal = Number(loanForm.principalAmount) || 0;
-  const calcRate = Number(loanForm.interestRate) || 0;
-  const calcMonths = Number(loanForm.durationMonths) || 1;
-  const calcInterest = (calcPrincipal * calcRate) / 100;
-  const calcTotalPayable = calcPrincipal + calcInterest;
-  const calcEmi = calcTotalPayable / calcMonths;
-
-  // Filtered users for quick send
+  // ── Derived data ─────────────────────────────────────────────────────────
+  const unreadNotifs = notifications.filter(n => !n.isRead).length;
+  const activeLoans  = loans.filter(l => ["ACTIVE","OVERDUE","PENDING"].includes(l.status));
   const filteredUsers = users.filter(u =>
-    u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.upiId?.toLowerCase().includes(searchQuery.toLowerCase())
+    !searchQ || u.name?.toLowerCase().includes(searchQ.toLowerCase()) ||
+    u.username?.toLowerCase().includes(searchQ.toLowerCase())
   );
 
+  const loanCalc = {
+    interest: (Number(loanForm.principalAmount) * Number(loanForm.interestRate)) / 100,
+    total: Number(loanForm.principalAmount) * (1 + Number(loanForm.interestRate) / 100),
+    emi: (Number(loanForm.principalAmount) * (1 + Number(loanForm.interestRate) / 100)) / Math.max(1, Number(loanForm.durationMonths)),
+  };
+
+  if (loading) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", flexDirection: "column", gap: 12 }}>
+      <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, #6366f1, #4f46e5)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 16 }}>SP</div>
+      <p style={{ color: "#6b6b7b", fontSize: 14 }}>Loading your account...</p>
+    </div>
+  );
+
+  // ── Sidebar items ─────────────────────────────────────────────────────────
+  const navItems = [
+    { id: "HOME",      label: "Home",        icon: "home"    },
+    { id: "PAYMENTS",  label: "Payments",    icon: "send"    },
+    { id: "LOANS",     label: "Loans & EMI", icon: "loan", badge: activeLoans.length || null },
+    { id: "HISTORY",   label: "History",     icon: "history" },
+    { id: "NOTIFS",    label: "Notifications", icon: "bell", badge: unreadNotifs || null },
+    { id: "SETTINGS",  label: "Settings",    icon: "settings" },
+  ];
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0E1117] text-white pb-32 font-sans antialiased selection:bg-purple-500">
-      
-      {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-[#0E1117]/80 backdrop-blur-xl border-b border-white/10 px-4 md:px-8 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#E1AAFF] to-[#00D1FF] p-[2px] shadow-lg shadow-purple-500/20">
-            <div className="w-full h-full bg-[#161922] rounded-2xl flex items-center justify-center font-extrabold text-[#E1AAFF] text-lg">
-              SP
+    <>
+      {/* Razorpay script */}
+      {razorpayConfig.isConfigured && !window.Razorpay && (
+        <script src="https://checkout.razorpay.com/v1/checkout.js" async />
+      )}
+
+      <div className="app-shell">
+        {/* ── SIDEBAR ───────────────────────────────────────────────────── */}
+        <aside className="sidebar">
+          {/* Logo */}
+          <div style={{ padding: "20px 16px 16px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid #1c1c27" }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: "linear-gradient(135deg, #6366f1, #4f46e5)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 14, flexShrink: 0 }}>SP</div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>ShivamPay</div>
+              <div style={{ fontSize: 11, color: "#4a4a5a", fontWeight: 500 }}>Financial Suite</div>
             </div>
           </div>
-          <div>
-            <h1 className="text-base font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-[#E1AAFF] to-[#00D1FF]">
-              ShivamPay <span className="text-[10px] uppercase font-mono px-2 py-0.5 bg-white/10 text-cyan-300 rounded-full border border-white/10 ml-1.5">Pro</span>
-            </h1>
-            <p className="text-[11px] text-gray-400 font-mono flex items-center gap-1">
-              <span>{userInfo.upiId || `${userInfo.username}@shivampay`}</span>
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 inline" />
-            </p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={loadAllData} 
-            title="Refresh Account Data"
-            className="p-2.5 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition active:scale-95 text-gray-300"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-[#00D1FF]' : ''}`} />
-          </button>
-          
-          <button
-            onClick={() => setActiveTab("NOTIFICATIONS")}
-            className="relative p-2.5 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition active:scale-95 text-gray-300"
-          >
-            <Bell className="w-4 h-4 text-[#E1AAFF]" />
-            {notifications.filter(n => !n.isRead).length > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-pink-500 rounded-full animate-pulse" />
-            )}
-          </button>
-
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[#1B1E29] border border-white/10 rounded-2xl text-xs font-mono text-gray-300">
-            <Building2 className="w-3.5 h-3.5 text-cyan-400" />
-            <span>{userInfo.linkedBank}</span>
+          {/* User mini-profile */}
+          <div style={{ margin: "12px 12px 8px", background: "#1c1c27", borderRadius: 12, padding: "12px 14px" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#e5e5ef", marginBottom: 2 }}>{user.name || user.username}</div>
+            <div style={{ fontSize: 11, color: "#4a4a5a", fontFamily: "JetBrains Mono, monospace" }}>
+              {user.upiId || `${user.username}@shivampay`}
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "#6366f1", marginTop: 8 }}>{fmt(user.bankbalance)}</div>
           </div>
 
-          <button
-            onClick={handleLogout}
-            title="Sign Out"
-            className="p-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-2xl transition active:scale-95 flex items-center gap-1.5 text-xs font-bold px-3"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Exit</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Container */}
-      <main className="max-w-6xl mx-auto px-4 md:px-8 mt-6">
-        
-        {/* Navigation Bar */}
-        <div className="flex bg-[#161922] p-1.5 rounded-3xl border border-white/10 mb-8 max-w-2xl mx-auto shadow-xl overflow-x-auto scrollbar-hide">
-          {[
-            { id: 'HOME', label: 'UPI & Quick Pay', icon: Wallet },
-            { id: 'LOANS', label: 'P2P Friend Loans & EMI', icon: HandCoins, badge: loans.filter(l => l.status === 'PENDING').length },
-            { id: 'HISTORY', label: 'Audit Ledger', icon: ReceiptText },
-            { id: 'NOTIFICATIONS', label: 'Alerts & Email Inbox', icon: Mail, badge: notifications.filter(n => n.type === 'EMAIL_ALERT').length },
-          ].map(tab => {
-            const Icon = tab.icon;
-            const active = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-xs md:text-sm font-bold transition-all whitespace-nowrap ${
-                  active 
-                    ? "bg-gradient-to-r from-[#E1AAFF] to-[#BD88FF] text-[#1a0b36] shadow-lg shadow-purple-500/25 scale-[1.02]" 
-                    : "text-gray-400 hover:text-white hover:bg-white/5"
-                }`}
+          {/* Nav */}
+          <nav style={{ flex: 1, padding: "8px 0" }}>
+            {navItems.map(item => (
+              <div
+                key={item.id}
+                className={`nav-item ${tab === item.id ? "active" : ""}`}
+                onClick={() => setTab(item.id)}
               >
-                <Icon className="w-4 h-4 stroke-[2.2]" />
-                <span>{tab.label}</span>
-                {tab.badge ? (
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${active ? 'bg-[#1a0b36] text-white' : 'bg-pink-500 text-white'}`}>
-                    {tab.badge}
+                <Icon d={icons[item.icon]} size={16} />
+                <span style={{ flex: 1 }}>{item.label}</span>
+                {item.badge ? (
+                  <span style={{ background: tab === item.id ? "rgba(255,255,255,0.2)" : "#6366f1", color: "#fff", borderRadius: 20, padding: "1px 7px", fontSize: 11, fontWeight: 700 }}>
+                    {item.badge}
                   </span>
                 ) : null}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* TAB 1: UPI & QUICK PAY HOME */}
-        {activeTab === "HOME" && (
-          <div className="space-y-8 animate-in fade-in duration-300">
-            
-            {/* Hero Balance Card */}
-            <div className="w-full bg-gradient-to-tr from-[#1B0A36] via-[#2F145C] to-[#4B2292] border border-[#BD88FF]/30 rounded-[40px] p-6 md:p-10 shadow-[0_20px_60px_rgba(100,50,200,0.25)] relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-[#00D1FF] to-[#E1AAFF] rounded-full blur-[110px] opacity-20 pointer-events-none" />
-              
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-cyan-300 text-xs font-extrabold uppercase tracking-widest bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20">
-                      Total Available Balance
-                    </span>
-                    <span className="text-emerald-400 text-xs font-semibold flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" /> Active
-                    </span>
-                  </div>
-                  <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight my-2 drop-shadow-md">
-                    ${userInfo.bankbalance?.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </h2>
-                  <p className="text-gray-300 text-sm flex items-center gap-2 font-medium">
-                    <Building2 className="w-4 h-4 text-[#E1AAFF]" />
-                    <span>Linked: {userInfo.linkedBank}</span>
-                    <span className="text-xs font-mono text-gray-400">(Default UPI PIN: <strong className="text-white">1234</strong>)</span>
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                  <button
-                    onClick={() => setShowQrModal(true)}
-                    className="flex-1 md:flex-none py-3.5 px-6 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 backdrop-blur-md transition shadow-lg active:scale-95"
-                  >
-                    <QrCode className="w-5 h-5 text-[#E1AAFF]" />
-                    <span>Receive / QR</span>
-                  </button>
-                  <button
-                    onClick={() => setShowScanPayModal(true)}
-                    className="flex-1 md:flex-none py-3.5 px-6 bg-gradient-to-r from-[#00D1FF] via-[#BD88FF] to-[#E1AAFF] hover:opacity-95 rounded-2xl font-black text-sm text-[#1a0b36] flex items-center justify-center gap-2 transition shadow-xl shadow-cyan-500/20 active:scale-95"
-                  >
-                    <Send className="w-5 h-5 text-[#1a0b36] fill-[#1a0b36]" />
-                    <span>Scan & Pay</span>
-                  </button>
-                </div>
               </div>
+            ))}
+          </nav>
 
-              {/* Quick Actions Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-8 border-t border-white/10 relative z-10">
-                {[
-                  { label: "Direct UPI Transfer", desc: "Pay via UPI ID or Phone", icon: Send, color: "text-[#00D1FF]", onClick: () => setShowSendModal(true) },
-                  { label: "Scan User QR", desc: "Instant contactless pay", icon: QrCode, color: "text-[#E1AAFF]", onClick: () => setShowScanPayModal(true) },
-                  { label: "Pay Utility Bills", desc: "Electricity, DTH & Recharge", icon: ReceiptText, color: "text-emerald-400", onClick: () => setShowBillModal(true) },
-                  { label: "P2P Friend Loan", desc: "Automated EMI & 0% Foreclose", icon: HandCoins, color: "text-amber-400", onClick: () => setActiveTab("LOANS") },
-                ].map((act, i) => {
-                  const Icon = act.icon;
-                  return (
-                    <div 
-                      key={i} 
-                      onClick={act.onClick}
-                      className="p-4 bg-white/5 hover:bg-white/10 rounded-3xl border border-white/5 hover:border-white/20 transition cursor-pointer group flex items-center gap-3.5"
-                    >
-                      <div className="w-12 h-12 rounded-2xl bg-[#161922] flex items-center justify-center border border-white/10 shadow-md group-hover:scale-110 transition">
-                        <Icon className={`w-6 h-6 ${act.color}`} />
+          {/* Logout */}
+          <div style={{ padding: "12px 12px 20px", borderTop: "1px solid #1c1c27" }}>
+            <div
+              className="nav-item"
+              onClick={() => { localStorage.clear(); navigate("/login"); }}
+              style={{ color: "#ef4444" }}
+            >
+              <Icon d={icons.logout} size={16} />
+              <span>Sign Out</span>
+            </div>
+          </div>
+        </aside>
+
+        {/* ── MAIN AREA ─────────────────────────────────────────────────── */}
+        <div className="main-area">
+          {/* Top bar */}
+          <header className="top-bar">
+            <div style={{ flex: 1 }}>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#111118" }}>
+                {navItems.find(n => n.id === tab)?.label}
+              </h2>
+            </div>
+
+            {/* Refresh */}
+            <button className="btn btn-ghost btn-sm" onClick={loadAll} title="Refresh" disabled={refreshing}>
+              <Icon d="M23 4v6h-6 M1 20v-6h6 M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" size={15} />
+              {refreshing ? " Syncing..." : ""}
+            </button>
+
+            {/* Notification bell */}
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ position: "relative" }}
+              onClick={() => setTab("NOTIFS")}
+            >
+              <Icon d={icons.bell} size={16} />
+              {unreadNotifs > 0 && (
+                <span style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, background: "#ef4444", borderRadius: "50%", border: "2px solid #fff" }} />
+              )}
+            </button>
+          </header>
+
+          {/* Page content */}
+          <main className="page-content">
+
+            {/* ╔═ HOME ══════════════════════════════════════════════════════ */}
+            {tab === "HOME" && (
+              <div style={{ maxWidth: 900, margin: "0 auto" }}>
+                {/* Balance + Add Money */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 24 }}>
+                  <div className="stat-card" style={{ gridColumn: "1 / 3", background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)", border: "none" }}>
+                    <div className="stat-label" style={{ color: "rgba(255,255,255,0.7)" }}>Available Balance</div>
+                    <div className="stat-value" style={{ color: "#fff", fontSize: 34 }}>{fmt(user.bankbalance)}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                      <div className="stat-sub" style={{ color: "rgba(255,255,255,0.6)", fontFamily: "JetBrains Mono, monospace", fontSize: 12 }}>
+                        {user.upiId || `${user.username}@shivampay`}
+                      </div>
+                      <button onClick={copyUpi} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 6, padding: "3px 8px", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                        {copiedUpi ? "Copied!" : "Copy UPI"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="stat-card" style={{ cursor: "pointer", border: "2px dashed #e0e7ff", background: "#eef2ff" }}
+                    onClick={() => { setTopup(""); openModal("topup"); }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: "#6366f1", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+                        <Icon d={icons.plus} size={18} sw="2.5" />
                       </div>
                       <div>
-                        <h4 className="text-sm font-extrabold text-white group-hover:text-[#E1AAFF] transition">{act.label}</h4>
-                        <p className="text-[11px] text-gray-400">{act.desc}</p>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#3730a3" }}>Add Money</div>
+                        <div style={{ fontSize: 11, color: "#6366f1" }}>via Razorpay · Any UPI/Card</div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Quick Pay Contacts & Peer Directory */}
-            <div className="bg-[#161922] p-6 md:p-8 rounded-[32px] border border-white/10">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <div>
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-[#E1AAFF]" />
-                    <span>Quick Pay Peer Directory</span>
-                  </h3>
-                  <p className="text-xs text-gray-400">Click any user to initiate an instant, PIN-protected UPI transfer or lend funds</p>
+                    <div className="stat-sub" style={{ fontSize: 11, color: "#6b6b7b" }}>
+                      {razorpayConfig.isConfigured ? "Real payments enabled ✓" : "Configure API keys to enable"}
+                    </div>
+                  </div>
                 </div>
-                <div className="relative w-full sm:w-72">
-                  <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Search name or UPI ID..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-[#1E222F] border border-white/10 rounded-2xl text-xs text-white placeholder-gray-500 outline-none focus:border-[#E1AAFF] transition"
-                  />
+
+                {/* Quick Actions */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 28 }}>
+                  {[
+                    { label: "Send Money", desc: "UPI Transfer", icon: "send", color: "#6366f1", bg: "#eef2ff", action: () => openModal("send") },
+                    { label: "Scan & Pay", desc: "QR Code", icon: "qr", color: "#10b981", bg: "#d1fae5", action: () => openModal("scan") },
+                    { label: "Pay Bills", desc: "Electricity · DTH", icon: "receipt", color: "#f59e0b", bg: "#fef3c7", action: () => openModal("bill") },
+                    { label: "My QR Code", desc: "Receive money", icon: "bank", color: "#06b6d4", bg: "#cffafe", action: () => openModal("qr") },
+                  ].map(a => (
+                    <div key={a.label}
+                      onClick={a.action}
+                      className="card"
+                      style={{ cursor: "pointer", padding: "16px", transition: "transform 0.15s, box-shadow 0.15s", border: `1px solid ${a.bg}` }}
+                      onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+                      onMouseLeave={e => e.currentTarget.style.transform = ""}
+                    >
+                      <div style={{ width: 40, height: 40, borderRadius: 12, background: a.bg, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+                        <Icon d={icons[a.icon]} size={20} stroke={a.color} />
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#111118" }}>{a.label}</div>
+                      <div style={{ fontSize: 11, color: "#9898a8", marginTop: 2 }}>{a.desc}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Recent Transactions */}
+                <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+                  <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e5ef", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#111118" }}>Recent Transactions</h3>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setTab("HISTORY")}>View All</button>
+                  </div>
+                  <table className="table">
+                    <thead><tr>
+                      <th>Description</th><th>Reference</th><th>Date</th><th style={{ textAlign: "right" }}>Amount</th>
+                    </tr></thead>
+                    <tbody>
+                      {transactions.slice(0, 6).length === 0 ? (
+                        <tr><td colSpan={4} style={{ textAlign: "center", color: "#9898a8", padding: 32 }}>No transactions yet. Send money to get started!</td></tr>
+                      ) : transactions.slice(0, 6).map(t => {
+                        const out = t.senderName === user.name || t.senderName === user.username;
+                        return (
+                          <tr key={t._id} style={{ cursor: "pointer" }} onClick={() => openModal("receipt", t)}>
+                            <td>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <div style={{ width: 32, height: 32, borderRadius: 10, background: out ? "#fee2e2" : "#d1fae5", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                  <Icon d={out ? icons.arrow_up : icons.arrow_dn} size={14} stroke={out ? "#ef4444" : "#10b981"} sw="2.5" />
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: 13, fontWeight: 600, color: "#111118" }}>{t.description || t.type}</div>
+                                  <div style={{ fontSize: 11, color: "#9898a8" }}>{out ? `To ${t.receiverName}` : `From ${t.senderName}`}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td><span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 12, color: "#6b6b7b" }}>{t.referenceId?.slice(-10)}</span></td>
+                            <td style={{ fontSize: 12, color: "#9898a8" }}>{new Date(t.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                            <td style={{ textAlign: "right", fontWeight: 700, fontFamily: "JetBrains Mono, monospace", color: out ? "#ef4444" : "#10b981" }}>
+                              {out ? "-" : "+"}{fmt(t.amount)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
+            )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredUsers.length === 0 ? (
-                  <div className="col-span-full py-8 text-center text-gray-500 text-sm">
-                    No other users registered in this environment yet. Open a private tab and register another account to simulate peer payments!
+            {/* ╔═ PAYMENTS ═══════════════════════════════════════════════════ */}
+            {tab === "PAYMENTS" && (
+              <div style={{ maxWidth: 900, margin: "0 auto" }}>
+                {/* Action cards */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 28 }}>
+                  {[
+                    { label: "Send Money", desc: "Transfer to any UPI ID or ShivamPay username", icon: "send", color: "#6366f1", bg: "#eef2ff", action: () => openModal("send") },
+                    { label: "Scan & Pay", desc: "Scan a peer's QR code for instant payment", icon: "qr", color: "#10b981", bg: "#d1fae5", action: () => openModal("scan") },
+                    { label: "Pay Bills", desc: "Electricity, Mobile Recharge, DTH, Water", icon: "receipt", color: "#f59e0b", bg: "#fef3c7", action: () => openModal("bill") },
+                  ].map(a => (
+                    <div key={a.label} onClick={a.action} className="card" style={{ cursor: "pointer", padding: 20 }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = a.color; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = ""; e.currentTarget.style.transform = ""; }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 12, background: a.bg, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
+                        <Icon d={icons[a.icon]} size={22} stroke={a.color} />
+                      </div>
+                      <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700 }}>{a.label}</h3>
+                      <p style={{ margin: 0, fontSize: 13, color: "#6b6b7b" }}>{a.desc}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Peer directory */}
+                <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+                  <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e5ef", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Peer Directory</h3>
+                    <div style={{ position: "relative", flexShrink: 0 }}>
+                      <Icon d={icons.search} size={14} stroke="#9898a8" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} />
+                      <input
+                        className="input"
+                        style={{ paddingLeft: 32, width: 220, fontSize: 13 }}
+                        placeholder="Search users..."
+                        value={searchQ}
+                        onChange={e => setSearch(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <table className="table">
+                    <thead><tr><th>User</th><th>UPI ID</th><th style={{ textAlign: "right" }}>Actions</th></tr></thead>
+                    <tbody>
+                      {filteredUsers.length === 0 ? (
+                        <tr><td colSpan={3} style={{ textAlign: "center", color: "#9898a8", padding: 32 }}>
+                          {users.length === 0 ? "No other users registered yet." : "No users match your search."}
+                        </td></tr>
+                      ) : filteredUsers.map(u => (
+                        <tr key={u._id}>
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <div style={{ width: 34, height: 34, borderRadius: 10, background: "#eef2ff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, color: "#6366f1" }}>
+                                {u.name?.charAt(0) || "U"}
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "#111118" }}>{u.name}</div>
+                                <div style={{ fontSize: 11, color: "#9898a8" }}>@{u.username}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td><span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 12, color: "#6366f1" }}>{u.upiId || `${u.username}@shivampay`}</span></td>
+                          <td style={{ textAlign: "right" }}>
+                            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                              <button className="btn btn-sm btn-outline" onClick={() => { setSend({ ...sendForm, receiverIdentifier: u.upiId || `${u.username}@shivampay` }); openModal("send"); }}>
+                                Pay
+                              </button>
+                              <button className="btn btn-sm btn-outline" style={{ color: "#6366f1", borderColor: "#c7d2fe" }}
+                                onClick={() => { setLoan({ ...loanForm, partnerUsername: u.username }); openModal("loan"); }}>
+                                Loan
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* ╔═ LOANS ══════════════════════════════════════════════════════ */}
+            {tab === "LOANS" && (
+              <div style={{ maxWidth: 900, margin: "0 auto" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 13, color: "#6b6b7b" }}>
+                      Lend or borrow with auto EMI deductions — zero fees to settle early
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button className="btn btn-outline btn-sm" onClick={handleEmiCron} style={{ color: "#f59e0b", borderColor: "#fde68a" }}>
+                      <Icon d={icons.zap} size={14} stroke="#f59e0b" />
+                      Simulate EMI Run
+                    </button>
+                    <button className="btn btn-primary btn-sm" onClick={() => openModal("loan")}>
+                      <Icon d={icons.plus} size={14} />
+                      New Loan
+                    </button>
+                  </div>
+                </div>
+
+                {loans.length === 0 ? (
+                  <div className="card" style={{ textAlign: "center", padding: "60px 20px" }}>
+                    <Icon d={icons.loan} size={40} stroke="#c8c8d4" />
+                    <h3 style={{ marginTop: 12, color: "#9898a8", fontWeight: 600 }}>No loan agreements yet</h3>
+                    <p style={{ color: "#c8c8d4", fontSize: 14 }}>Create a P2P loan with a friend or peer.</p>
+                    <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => openModal("loan")}>Create Loan Proposal</button>
                   </div>
                 ) : (
-                  filteredUsers.map((u) => (
-                    <div
-                      key={u._id}
-                      className="p-4 bg-[#1B1E2B] hover:bg-[#232738] border border-white/5 hover:border-white/20 rounded-3xl transition group flex flex-col justify-between"
-                    >
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#E1AAFF] to-[#00D1FF] flex items-center justify-center text-[#1a0b36] font-black text-lg shadow-md">
-                          {u.name?.charAt(0) || "U"}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    {loans.map(loan => {
+                      const isLender = loan.lenderName === user.name || loan.lenderName === user.username;
+                      const pct = Math.min(100, Math.round(((loan.totalPayableAmount - loan.remainingAmount) / loan.totalPayableAmount) * 100));
+                      const statusColors = {
+                        PENDING: { color: "#92400e", bg: "#fef3c7", label: "Pending" },
+                        ACTIVE:  { color: "#065f46", bg: "#d1fae5", label: "Active" },
+                        OVERDUE: { color: "#991b1b", bg: "#fee2e2", label: "⚠ Overdue" },
+                        COMPLETED:  { color: "#6b6b7b", bg: "#f3f3f8", label: "Completed" },
+                        FORECLOSED: { color: "#6b6b7b", bg: "#f3f3f8", label: "Foreclosed" },
+                      };
+                      const sc = statusColors[loan.status] || statusColors.COMPLETED;
+
+                      return (
+                        <div key={loan._id} className="card" style={{ padding: 20 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
+                            <div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                                <span className="badge" style={{ background: sc.bg, color: sc.color }}>{sc.label}</span>
+                                <span style={{ fontSize: 12, color: "#9898a8" }}>
+                                  {isLender ? `Lending to @${loan.borrowerName}` : `Borrowed from @${loan.lenderName}`}
+                                </span>
+                              </div>
+                              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#111118" }}>{loan.remarks || "Loan Agreement"}</h3>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontSize: 11, color: "#9898a8", marginBottom: 2 }}>Total Payable</div>
+                              <div style={{ fontSize: 22, fontWeight: 800, color: "#111118", fontFamily: "JetBrains Mono, monospace" }}>{fmt(loan.totalPayableAmount)}</div>
+                            </div>
+                          </div>
+
+                          {/* Stats row */}
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16, background: "#f9f9fc", borderRadius: 12, padding: "12px 16px" }}>
+                            {[
+                              ["Principal", fmt(loan.principalAmount)],
+                              ["Interest", `${loan.interestRate}% · ${fmt(loan.emiAmount)}/mo`],
+                              ["Remaining", fmt(loan.remainingAmount)],
+                              ["EMI Day", `${loan.deductionDayOfMonth}th of month`],
+                            ].map(([l, v]) => (
+                              <div key={l}>
+                                <div style={{ fontSize: 11, color: "#9898a8", fontWeight: 600, marginBottom: 2 }}>{l}</div>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: "#111118" }}>{v}</div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Progress */}
+                          {["ACTIVE","OVERDUE","COMPLETED","FORECLOSED"].includes(loan.status) && (
+                            <div style={{ marginBottom: 16 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#9898a8", marginBottom: 6 }}>
+                                <span>Repayment Progress</span>
+                                <span style={{ fontWeight: 700, color: "#10b981" }}>{pct}% settled</span>
+                              </div>
+                              <div style={{ height: 6, background: "#e5e5ef", borderRadius: 6, overflow: "hidden" }}>
+                                <div style={{ height: "100%", width: `${pct}%`, background: "linear-gradient(90deg, #6366f1, #10b981)", borderRadius: 6, transition: "width 0.6s ease" }} />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Actions */}
+                          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                            {loan.status === "PENDING" && (
+                              <button className="btn btn-green btn-sm" onClick={() => openModal("accept", loan)}>
+                                <Icon d={icons.check} size={14} /> Accept & Disburse {fmt(loan.principalAmount)}
+                              </button>
+                            )}
+                            {["ACTIVE","OVERDUE"].includes(loan.status) && !isLender && (
+                              <button className="btn btn-sm" style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fecaca" }}
+                                onClick={() => openModal("foreclose", loan)}>
+                                Pay Full Amount — ₹0 Closure Fee
+                              </button>
+                            )}
+                            {["ACTIVE","OVERDUE"].includes(loan.status) && isLender && (
+                              <span style={{ fontSize: 12, color: "#9898a8", alignSelf: "center" }}>EMI auto-deducts on day {loan.deductionDayOfMonth}</span>
+                            )}
+                            {["COMPLETED","FORECLOSED"].includes(loan.status) && (
+                              <span className="badge badge-green"><Icon d={icons.check} size={12} /> Settled & Closed</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="overflow-hidden">
-                          <h4 className="text-sm font-extrabold text-white truncate">{u.name}</h4>
-                          <p className="text-xs text-cyan-400 font-mono truncate">@{u.username}</p>
-                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ╔═ HISTORY ════════════════════════════════════════════════════ */}
+            {tab === "HISTORY" && (
+              <div style={{ maxWidth: 900, margin: "0 auto" }}>
+                <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+                  <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e5ef", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Transaction Ledger</h3>
+                    <span className="badge badge-gray">{transactions.length} records</span>
+                  </div>
+                  <table className="table">
+                    <thead><tr>
+                      <th>Description</th><th>Type</th><th>Reference</th><th>Date & Time</th><th style={{ textAlign: "right" }}>Amount</th><th>Status</th>
+                    </tr></thead>
+                    <tbody>
+                      {transactions.length === 0 ? (
+                        <tr><td colSpan={6} style={{ textAlign: "center", color: "#9898a8", padding: 40 }}>No transactions recorded yet.</td></tr>
+                      ) : transactions.map(t => {
+                        const out = t.senderName === user.name || t.senderName === user.username;
+                        return (
+                          <tr key={t._id} onClick={() => openModal("receipt", t)} style={{ cursor: "pointer" }}>
+                            <td>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: "#111118" }}>{t.description || t.type}</div>
+                              <div style={{ fontSize: 11, color: "#9898a8" }}>{out ? `→ ${t.receiverName}` : `← ${t.senderName}`}</div>
+                            </td>
+                            <td><span className="badge badge-gray" style={{ fontSize: 10 }}>{t.type}</span></td>
+                            <td><span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#9898a8" }}>{t.referenceId}</span></td>
+                            <td style={{ fontSize: 12, color: "#9898a8" }}>{new Date(t.createdAt).toLocaleString("en-IN")}</td>
+                            <td style={{ textAlign: "right", fontFamily: "JetBrains Mono, monospace", fontWeight: 700, color: out ? "#ef4444" : "#10b981" }}>
+                              {out ? "-" : "+"}{fmt(t.amount)}
+                            </td>
+                            <td><span className={`badge badge-${t.status === "SUCCESS" ? "green" : "red"}`}>{t.status}</span></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* ╔═ NOTIFICATIONS ══════════════════════════════════════════════ */}
+            {tab === "NOTIFS" && (
+              <div style={{ maxWidth: 700, margin: "0 auto" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <p style={{ margin: 0, fontSize: 13, color: "#6b6b7b" }}>Email alerts & activity log</p>
+                  {unreadNotifs > 0 && (
+                    <button className="btn btn-ghost btn-sm" onClick={async () => { await axios.put(`${API}/notifications/mark-read`, {}, auth); loadAll(); }}>
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+                <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+                  {notifications.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "60px 20px", color: "#9898a8" }}>
+                      <Icon d={icons.bell} size={36} stroke="#c8c8d4" />
+                      <p style={{ marginTop: 12 }}>You're all caught up!</p>
+                    </div>
+                  ) : notifications.map((n, i) => (
+                    <div key={n._id} style={{ padding: "16px 20px", borderBottom: i < notifications.length - 1 ? "1px solid #f3f3f8" : "none", display: "flex", gap: 14, alignItems: "flex-start", background: !n.isRead ? "#fafbff" : "transparent" }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: n.type === "EMAIL_ALERT" ? "#fee2e2" : "#eef2ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <Icon d={n.type === "EMAIL_ALERT" ? icons.alert : icons.bell} size={16} stroke={n.type === "EMAIL_ALERT" ? "#ef4444" : "#6366f1"} />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            setSendForm({ ...sendForm, receiverIdentifier: u.upiId || `${u.username}@shivampay`, amount: "" });
-                            setShowSendModal(true);
-                          }}
-                          className="flex-1 py-2 bg-white/10 hover:bg-[#E1AAFF] hover:text-[#1a0b36] rounded-xl text-xs font-bold text-white transition flex items-center justify-center gap-1"
-                        >
-                          <Send className="w-3 h-3" /> Pay
-                        </button>
-                        <button
-                          onClick={() => {
-                            setLoanForm({ ...loanForm, partnerUsername: u.username });
-                            setShowLoanModal(true);
-                          }}
-                          className="flex-1 py-2 bg-[#BD88FF]/20 hover:bg-[#BD88FF] hover:text-[#1a0b36] rounded-xl text-xs font-bold text-[#BD88FF] transition flex items-center justify-center gap-1"
-                        >
-                          <HandCoins className="w-3 h-3" /> Loan
-                        </button>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "#111118" }}>{n.title}</div>
+                          <div style={{ fontSize: 11, color: "#9898a8", whiteSpace: "nowrap" }}>{new Date(n.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>
+                        </div>
+                        <div style={{ fontSize: 13, color: "#6b6b7b", lineHeight: 1.5 }}>{n.message}</div>
+                        {n.previewUrl && (
+                          <a href={n.previewUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 8, fontSize: 12, fontWeight: 600, color: "#6366f1", textDecoration: "none" }}>
+                            Open Email Preview →
+                          </a>
+                        )}
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Recent Transactions Showcase */}
-            <div className="bg-[#161922] p-6 md:p-8 rounded-[32px] border border-white/10">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold text-white">Recent Activity</h3>
-                <button 
-                  onClick={() => setActiveTab("HISTORY")}
-                  className="text-xs font-bold text-[#E1AAFF] hover:underline flex items-center gap-1"
-                >
-                  <span>View All Ledger</span>
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div className="space-y-3">
-                {transactions.slice(0, 4).length === 0 ? (
-                  <p className="text-gray-500 text-sm py-6 text-center">No transactions recorded yet.</p>
-                ) : (
-                  transactions.slice(0, 4).map(t => {
-                    const isOutgoing = t.senderName === userInfo.name || t.senderName === userInfo.username || t.senderId?.toString() === userInfo._id?.toString();
-                    return (
-                      <div 
-                        key={t._id} 
-                        onClick={() => setSelectedReceipt(t)}
-                        className="p-4 bg-[#1B1E2B] hover:bg-[#202434] rounded-2xl flex items-center justify-between cursor-pointer transition border border-transparent hover:border-white/10"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${isOutgoing ? 'bg-pink-500/20 text-pink-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                            {isOutgoing ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownLeft className="w-5 h-5" />}
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-extrabold text-white">{t.description || t.type}</h4>
-                            <p className="text-[11px] text-gray-400 font-mono">{new Date(t.createdAt).toLocaleString()} • Ref: {t.referenceId}</p>
-                          </div>
-                        </div>
-                        <span className={`font-mono font-extrabold text-base ${isOutgoing ? 'text-pink-400' : 'text-emerald-400'}`}>
-                          {isOutgoing ? '-' : '+'}${t.amount.toFixed(2)}
-                        </span>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-          </div>
-        )}
-
-        {/* TAB 2: P2P FRIEND LOANS & EMI HUB (THE CORE EXTRA FEATURE) */}
-        {activeTab === "LOANS" && (
-          <div className="space-y-8 animate-in fade-in duration-300">
-            
-            {/* Loan Hub Header Banner */}
-            <div className="w-full bg-gradient-to-r from-[#21173D] via-[#2D1B54] to-[#1C1F33] p-8 rounded-[40px] border border-[#E1AAFF]/20 shadow-2xl relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-6">
-              <div className="max-w-xl">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] font-extrabold px-3 py-1 bg-[#E1AAFF] text-[#1a0b36] rounded-full uppercase tracking-wider">
-                    P2P Lending Engine
-                  </span>
-                  <span className="text-xs text-emerald-400 font-bold">✓ Automated EMI Cron Ready</span>
+                  ))}
                 </div>
-                <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-3">
-                  Friend & Known-Person Loan Hub
-                </h2>
-                <p className="text-gray-300 text-xs md:text-sm leading-relaxed font-medium">
-                  Provide or take loans with customizable interest rates and specific monthly due dates. Our automated EMI cron engine daily checks and transfers funds. Need early settlement? Borrowers can execute a **Zero-Cost One-Click Foreclosure** anytime to pay all remaining dues instantly with $0 extra fees!
-                </p>
               </div>
+            )}
 
-              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                <button
-                  onClick={() => setShowLoanModal(true)}
-                  className="py-4 px-6 bg-gradient-to-r from-[#E1AAFF] via-[#BD88FF] to-[#00D1FF] hover:opacity-95 text-[#1a0b36] font-extrabold text-sm rounded-2xl transition shadow-xl shadow-purple-500/20 active:scale-95 flex items-center justify-center gap-2 whitespace-nowrap"
-                >
-                  <HandCoins className="w-5 h-5 stroke-[2.5]" />
-                  <span>New Loan Agreement</span>
-                </button>
+            {/* ╔═ SETTINGS ══════════════════════════════════════════════════ */}
+            {tab === "SETTINGS" && (
+              <div style={{ maxWidth: 700, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
+                {/* My QR Code */}
+                <div className="card">
+                  <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700 }}>My QR Code & UPI ID</h3>
+                  <div style={{ display: "flex", gap: 24, alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ background: "#fff", padding: 12, border: "1px solid #e5e5ef", borderRadius: 12, display: "inline-block" }}>
+                      <QRCodeSVG
+                        value={`upi://pay?pa=${user.upiId || `${user.username}@shivampay`}&pn=${encodeURIComponent(user.name || "")}&cu=INR`}
+                        size={140} bgColor="#fff" fgColor="#111118" level="H"
+                      />
+                    </div>
+                    <div>
+                      <div className="label">Your UPI ID</div>
+                      <div style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 16, fontWeight: 700, color: "#6366f1", marginBottom: 10 }}>
+                        {user.upiId || `${user.username}@shivampay`}
+                      </div>
+                      <button className="btn btn-outline btn-sm" onClick={copyUpi}>
+                        <Icon d={icons.copy} size={13} /> {copiedUpi ? "Copied!" : "Copy UPI ID"}
+                      </button>
+                      <p style={{ fontSize: 12, color: "#9898a8", marginTop: 10 }}>Share this QR or UPI ID to receive money from any UPI app.</p>
+                    </div>
+                  </div>
+                </div>
 
-                <button
-                  onClick={handleSimulateEmiCron}
-                  title="Test run the daily scheduled automated EMI deduction and trigger email notifications right now!"
-                  className="py-4 px-6 bg-[#2B2342] hover:bg-[#382E55] text-amber-300 border border-amber-400/30 rounded-2xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-lg active:scale-95"
-                >
-                  <Zap className="w-4 h-4 fill-amber-300 text-amber-300 animate-bounce" />
-                  <span>⚡ Simulate Auto EMI Cron Now</span>
+                {/* Razorpay Status */}
+                <div className="card">
+                  <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700 }}>Real Payment Gateway</h3>
+                  <p style={{ margin: "0 0 16px", fontSize: 13, color: "#6b6b7b" }}>Razorpay integration for real money top-ups</p>
+                  {razorpayConfig.isConfigured ? (
+                    <div className="alert alert-success"><Icon d={icons.check} size={16} /> Razorpay is active. Real payments enabled.</div>
+                  ) : (
+                    <div>
+                      <div className="alert alert-warn" style={{ marginBottom: 16 }}>
+                        <Icon d={icons.alert} size={16} />
+                        <div>
+                          <strong>Razorpay not configured.</strong> Add your API keys to enable real payments.
+                          <ol style={{ margin: "8px 0 0 16px", padding: 0, fontSize: 12, lineHeight: 2 }}>
+                            <li>Create a free account at <a href="https://dashboard.razorpay.com" target="_blank" rel="noreferrer" style={{ color: "#92400e", fontWeight: 600 }}>dashboard.razorpay.com</a></li>
+                            <li>Go to Settings → API Keys → Generate Test Key</li>
+                            <li>Add keys to <code style={{ background: "#fef3c7", padding: "1px 5px", borderRadius: 4 }}>backend/.env</code></li>
+                            <li>Restart your backend server</li>
+                          </ol>
+                        </div>
+                      </div>
+                      <div style={{ background: "#f9f9fc", borderRadius: 10, padding: 14, border: "1px solid #e5e5ef" }}>
+                        <div style={{ fontSize: 12, color: "#9898a8", marginBottom: 6, fontWeight: 600 }}>backend/.env</div>
+                        <pre style={{ margin: 0, fontSize: 12, color: "#6366f1", fontFamily: "JetBrains Mono, monospace", lineHeight: 1.8 }}>
+{`RAZORPAY_KEY_ID=rzp_test_YOUR_KEY_ID_HERE
+RAZORPAY_KEY_SECRET=YOUR_KEY_SECRET_HERE`}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Account info */}
+                <div className="card">
+                  <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700 }}>Account Information</h3>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    {[
+                      ["Full Name", user.name],
+                      ["Username", `@${user.username}`],
+                      ["Email", user.email || "Not set"],
+                      ["Linked Bank", user.linkedBank || "HDFC Bank - **** 8824"],
+                      ["Default UPI PIN", "****  (Change via API)"],
+                    ].map(([l, v]) => (
+                      <div key={l}>
+                        <div className="label">{l}</div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: "#111118" }}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </main>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          MODALS
+      ═══════════════════════════════════════════════════════════════════ */}
+
+      {/* Status bar inside modal (reusable) */}
+      {modal && (() => {
+        const StatusBar = () => txnState.status !== "idle" && (
+          <div className={`alert alert-${txnState.status === "error" ? "error" : txnState.status === "success" ? "success" : "info"}`}
+            style={{ marginTop: 16 }}>
+            {txnState.status === "loading" && <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid currentColor", borderTopColor: "transparent", animation: "spin 0.7s linear infinite", flexShrink: 0 }} />}
+            {txnState.msg}
+          </div>
+        );
+
+        // SEND MONEY
+        if (modal === "send") return (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+            <div className="modal">
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Send Money</h3>
+                <button className="btn btn-ghost btn-sm" onClick={closeModal}><Icon d={icons.x} size={16} /></button>
+              </div>
+              <form onSubmit={handleSend} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div><label className="label">Recipient UPI ID or Username</label>
+                  <input className="input" required placeholder="e.g. alex@shivampay or alex"
+                    value={sendForm.receiverIdentifier} onChange={e => setSend({ ...sendForm, receiverIdentifier: e.target.value })} /></div>
+                <div><label className="label">Amount (₹)</label>
+                  <input className="input" type="number" step="0.01" required placeholder="0.00"
+                    style={{ fontSize: 20, fontWeight: 700, fontFamily: "JetBrains Mono, monospace" }}
+                    value={sendForm.amount} onChange={e => setSend({ ...sendForm, amount: e.target.value })} /></div>
+                <div><label className="label">Remarks</label>
+                  <input className="input" placeholder="Dinner, rent, gift..." value={sendForm.description} onChange={e => setSend({ ...sendForm, description: e.target.value })} /></div>
+                <div><label className="label">UPI PIN <span style={{ color: "#9898a8", fontWeight: 400, textTransform: "none" }}>(Default: 1234)</span></label>
+                  <input className="input" type="password" maxLength={4} required placeholder="••••"
+                    style={{ textAlign: "center", fontSize: 20, fontFamily: "JetBrains Mono, monospace", letterSpacing: 8 }}
+                    value={sendForm.pin} onChange={e => setSend({ ...sendForm, pin: e.target.value })} /></div>
+                <StatusBar />
+                <button className="btn btn-primary btn-lg" type="submit" disabled={txnState.status === "loading"} style={{ marginTop: 4 }}>
+                  {txnState.status === "loading" ? "Sending..." : "Send Money"}
                 </button>
+              </form>
+            </div>
+          </div>
+        );
+
+        // QR CODE
+        if (modal === "qr") return (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+            <div className="modal" style={{ textAlign: "center" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+                <button className="btn btn-ghost btn-sm" onClick={closeModal}><Icon d={icons.x} size={16} /></button>
+              </div>
+              <div style={{ width: 60, height: 60, borderRadius: 16, background: "linear-gradient(135deg, #6366f1, #4f46e5)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 22, margin: "0 auto 12px" }}>
+                {user.name?.charAt(0) || "U"}
+              </div>
+              <h3 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 800 }}>{user.name}</h3>
+              <div style={{ fontFamily: "JetBrains Mono, monospace", color: "#6366f1", fontSize: 13, marginBottom: 20 }}>{user.upiId || `${user.username}@shivampay`}</div>
+              <div style={{ background: "#fff", padding: 16, borderRadius: 16, border: "1px solid #e5e5ef", display: "inline-block", marginBottom: 16 }}>
+                <QRCodeSVG value={`upi://pay?pa=${user.upiId || `${user.username}@shivampay`}&pn=${encodeURIComponent(user.name || "")}&cu=INR`}
+                  size={200} bgColor="#fff" fgColor="#111118" level="H" />
+              </div>
+              <p style={{ fontSize: 12, color: "#9898a8" }}>Scan with any UPI app (GPay, PhonePe, Paytm) to pay</p>
+            </div>
+          </div>
+        );
+
+        // SCAN & PAY
+        if (modal === "scan") return (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+            <div className="modal">
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Scan & Pay</h3>
+                <button className="btn btn-ghost btn-sm" onClick={closeModal}><Icon d={icons.x} size={16} /></button>
+              </div>
+              <div style={{ height: 160, background: "#0a0a0f", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, border: "2px dashed #2a2a38", position: "relative", overflow: "hidden" }}>
+                <div style={{ width: 120, height: 120, border: "2px solid #6366f1", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ height: 2, width: "100%", background: "#6366f1", animation: "scan 1.5s ease-in-out infinite" }} />
+                </div>
+                <div style={{ position: "absolute", bottom: 10, fontSize: 11, color: "#4a4a5a" }}>Camera viewfinder — select a peer below to simulate</div>
+              </div>
+              <div style={{ fontSize: 12, color: "#9898a8", marginBottom: 10, fontWeight: 600 }}>Or tap a user to load their QR:</div>
+              <div style={{ maxHeight: 200, overflowY: "auto" }} className="scrollbar-hide">
+                {users.map(u => (
+                  <div key={u._id} onClick={() => { setSend({ ...sendForm, receiverIdentifier: u.upiId || `${u.username}@shivampay`, amount: "" }); closeModal(); setTimeout(() => openModal("send"), 50); }}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, cursor: "pointer", marginBottom: 4 }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#f3f3f8"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                    <Icon d={icons.qr} size={16} stroke="#6366f1" />
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>{u.name} <span style={{ color: "#9898a8", fontWeight: 400 }}>({u.upiId || `${u.username}@shivampay`})</span></span>
+                    <span style={{ marginLeft: "auto", fontSize: 12, color: "#6366f1", fontWeight: 600 }}>Select →</span>
+                  </div>
+                ))}
               </div>
             </div>
+          </div>
+        );
 
-            {/* Active & Pending Loans Ledger */}
-            <div className="bg-[#161922] p-6 md:p-8 rounded-[32px] border border-white/10">
-              <h3 className="text-xl font-extrabold text-white mb-6 flex items-center gap-2">
-                <DollarSign className="w-6 h-6 text-emerald-400" />
-                <span>Active & Pending Loan Agreements</span>
-              </h3>
+        // PAY BILL
+        if (modal === "bill") return (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+            <div className="modal">
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Pay Utility Bill</h3>
+                <button className="btn btn-ghost btn-sm" onClick={closeModal}><Icon d={icons.x} size={16} /></button>
+              </div>
+              <form onSubmit={handleBill} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div><label className="label">Category</label>
+                  <select className="input" value={billForm.category} onChange={e => setBill({ ...billForm, category: e.target.value })}>
+                    <option>Electricity</option><option>Mobile Recharge</option><option>DTH</option><option>Water</option>
+                  </select></div>
+                <div><label className="label">Biller Name</label>
+                  <input className="input" required value={billForm.billerName} onChange={e => setBill({ ...billForm, billerName: e.target.value })} /></div>
+                <div><label className="label">Amount (₹)</label>
+                  <input className="input" type="number" step="0.01" required placeholder="0.00"
+                    style={{ fontSize: 20, fontWeight: 700, fontFamily: "JetBrains Mono, monospace" }}
+                    value={billForm.amount} onChange={e => setBill({ ...billForm, amount: e.target.value })} /></div>
+                <div><label className="label">UPI PIN</label>
+                  <input className="input" type="password" maxLength={4} required placeholder="••••"
+                    style={{ textAlign: "center", fontSize: 20, fontFamily: "JetBrains Mono, monospace", letterSpacing: 8 }}
+                    value={billForm.pin} onChange={e => setBill({ ...billForm, pin: e.target.value })} /></div>
+                <StatusBar />
+                <button className="btn btn-primary btn-lg" type="submit" disabled={txnState.status === "loading"}>
+                  {txnState.status === "loading" ? "Paying..." : "Pay Bill"}
+                </button>
+              </form>
+            </div>
+          </div>
+        );
 
-              {loans.length === 0 ? (
-                <div className="p-12 border border-dashed border-white/10 rounded-3xl text-center">
-                  <HandCoins className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                  <h4 className="text-base font-bold text-gray-400">No loans active in your profile</h4>
-                  <p className="text-xs text-gray-500 mt-1 mb-4">Start by offering a friendly loan or requesting assistance from a known peer.</p>
-                  <button
-                    onClick={() => setShowLoanModal(true)}
-                    className="py-2.5 px-6 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold text-white transition inline-flex items-center gap-2"
-                  >
-                    <span>+ Create First Proposal</span>
+        // LOAN
+        if (modal === "loan") return (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+            <div className="modal modal-lg" style={{ maxHeight: "90vh", overflowY: "auto" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>New Loan Agreement</h3>
+                <button className="btn btn-ghost btn-sm" onClick={closeModal}><Icon d={icons.x} size={16} /></button>
+              </div>
+              <form onSubmit={handleLoan} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, background: "#f3f3f8", borderRadius: 10, padding: 4 }}>
+                  {["LENDER","BORROWER"].map(role => (
+                    <button key={role} type="button" onClick={() => setLoan({ ...loanForm, role })}
+                      style={{ padding: "8px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, background: loanForm.role === role ? "#fff" : "transparent", color: loanForm.role === role ? "#6366f1" : "#6b6b7b", boxShadow: loanForm.role === role ? "0 1px 4px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
+                      {role === "LENDER" ? "🤝 I'm Lending" : "🙏 I'm Borrowing"}
+                    </button>
+                  ))}
+                </div>
+                <div><label className="label">Partner's Username</label>
+                  <input className="input" required placeholder="username (not UPI ID)" value={loanForm.partnerUsername} onChange={e => setLoan({ ...loanForm, partnerUsername: e.target.value })} /></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div><label className="label">Principal (₹)</label>
+                    <input className="input" type="number" required value={loanForm.principalAmount} onChange={e => setLoan({ ...loanForm, principalAmount: e.target.value })} /></div>
+                  <div><label className="label">Interest Rate (%)</label>
+                    <input className="input" type="number" step="0.1" required value={loanForm.interestRate} onChange={e => setLoan({ ...loanForm, interestRate: e.target.value })} /></div>
+                  <div><label className="label">Duration (Months)</label>
+                    <input className="input" type="number" min="1" max="60" required value={loanForm.durationMonths} onChange={e => setLoan({ ...loanForm, durationMonths: e.target.value })} /></div>
+                  <div><label className="label">EMI Deduction Day</label>
+                    <select className="input" value={loanForm.deductionDayOfMonth} onChange={e => setLoan({ ...loanForm, deductionDayOfMonth: e.target.value })}>
+                      {[1,5,10,15,20,25,28].map(d => <option key={d} value={d}>{d}th of month</option>)}
+                    </select></div>
+                </div>
+                {/* EMI preview */}
+                {loanForm.principalAmount && (
+                  <div style={{ background: "#eef2ff", borderRadius: 10, padding: "12px 14px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                    {[["Interest", fmt(loanCalc.interest)], ["Total Payable", fmt(loanCalc.total)], ["Monthly EMI", fmt(loanCalc.emi)]].map(([l, v]) => (
+                      <div key={l}><div style={{ fontSize: 11, color: "#6366f1", fontWeight: 600 }}>{l}</div><div style={{ fontSize: 14, fontWeight: 800, color: "#3730a3" }}>{v}</div></div>
+                    ))}
+                  </div>
+                )}
+                <div><label className="label">Agreement Title</label>
+                  <input className="input" placeholder="e.g. Laptop purchase, Business startup..." value={loanForm.remarks} onChange={e => setLoan({ ...loanForm, remarks: e.target.value })} /></div>
+                <StatusBar />
+                <button className="btn btn-primary btn-lg" type="submit" disabled={txnState.status === "loading"}>
+                  {txnState.status === "loading" ? "Submitting..." : "Submit Proposal"}
+                </button>
+              </form>
+            </div>
+          </div>
+        );
+
+        // TOP UP (Razorpay)
+        if (modal === "topup") return (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+            <div className="modal">
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Add Money to Wallet</h3>
+                <button className="btn btn-ghost btn-sm" onClick={closeModal}><Icon d={icons.x} size={16} /></button>
+              </div>
+              {!razorpayConfig.isConfigured ? (
+                <div>
+                  <div className="alert alert-warn" style={{ marginBottom: 16 }}>
+                    <Icon d={icons.alert} size={16} />
+                    <div><strong>Razorpay not configured yet.</strong><br />Add your API keys to <code style={{ background: "#fef3c7", padding: "1px 4px", borderRadius: 3 }}>backend/.env</code> to enable real payments.</div>
+                  </div>
+                  <ol style={{ fontSize: 13, color: "#6b6b7b", lineHeight: 2, paddingLeft: 20, margin: 0 }}>
+                    <li>Sign up free at <a href="https://dashboard.razorpay.com" target="_blank" rel="noreferrer" style={{ color: "#6366f1", fontWeight: 600 }}>dashboard.razorpay.com</a></li>
+                    <li>Get your Test Key ID & Secret</li>
+                    <li>Add them to <code>backend/.env</code></li>
+                    <li>Restart your backend with <code>npm start</code></li>
+                  </ol>
+                  <button className="btn btn-outline" style={{ width: "100%", marginTop: 16 }} onClick={closeModal}>Got it</button>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div className="alert alert-info">
+                    <Icon d={icons.check} size={16} />
+                    <span>Payments are processed securely by Razorpay. We never see your card or bank details.</span>
+                  </div>
+                  <div>
+                    <label className="label">Amount to Add (₹)</label>
+                    <input className="input" type="number" min="1" max="500000" placeholder="e.g. 1000"
+                      style={{ fontSize: 24, fontWeight: 800, fontFamily: "JetBrains Mono, monospace" }}
+                      value={topupAmount} onChange={e => setTopup(e.target.value)} />
+                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                      {[500, 1000, 2000, 5000].map(a => (
+                        <button key={a} className="btn btn-outline btn-sm" onClick={() => setTopup(String(a))}>₹{a.toLocaleString()}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <StatusBar />
+                  <button className="btn btn-primary btn-lg" onClick={handleTopup} disabled={txnState.status === "loading" || !topupAmount}>
+                    {txnState.status === "loading" ? "Please wait..." : `Pay ${topupAmount ? fmt(topupAmount) : "₹0"} via Razorpay`}
                   </button>
                 </div>
-              ) : (
-                <div className="space-y-6">
-                  {loans.map(loan => {
-                    const isLender = loan.lenderName === userInfo.name || loan.lenderName === userInfo.username || loan.lenderId === userInfo._id;
-                    const isBorrower = !isLender;
-                    const progressPercent = Math.max(0, Math.min(100, Math.round(((loan.totalPayableAmount - loan.remainingAmount) / loan.totalPayableAmount) * 100)));
-                    
-                    return (
-                      <div 
-                        key={loan._id} 
-                        className={`p-6 rounded-3xl border transition relative overflow-hidden ${
-                          loan.status === 'ACTIVE' 
-                            ? 'bg-[#1B1E2B] border-[#00D1FF]/30 shadow-lg' 
-                            : loan.status === 'OVERDUE'
-                            ? 'bg-[#291B22] border-pink-500/50 shadow-pink-500/10'
-                            : loan.status === 'FORECLOSED' || loan.status === 'COMPLETED'
-                            ? 'bg-[#181C25] border-emerald-500/30 opacity-80'
-                            : 'bg-[#1B1E2B] border-amber-400/30'
-                        }`}
-                      >
-                        {/* Top info row */}
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/10 pb-4 mb-4">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className={`text-[10px] font-extrabold uppercase px-3 py-0.5 rounded-full border ${
-                                loan.status === 'ACTIVE' ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30' :
-                                loan.status === 'OVERDUE' ? 'bg-pink-500/20 text-pink-300 border-pink-500/40 animate-pulse' :
-                                loan.status === 'FORECLOSED' ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' :
-                                loan.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' :
-                                'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                              }`}>
-                                {loan.status === 'OVERDUE' ? '⚠️ OVERDUE (Email Dispatched)' : loan.status}
-                              </span>
-                              <span className="text-xs font-bold text-gray-400">
-                                • {isLender ? `You are lending to @${loan.borrowerName}` : `You borrowed from @${loan.lenderName}`}
-                              </span>
-                            </div>
-                            <h4 className="text-base font-black text-white">{loan.remarks}</h4>
-                          </div>
-
-                          <div className="text-right sm:text-right">
-                            <span className="text-xs text-gray-400 font-medium block">Total Payable</span>
-                            <span className="text-2xl font-mono font-extrabold text-white">${loan.totalPayableAmount.toFixed(2)}</span>
-                          </div>
-                        </div>
-
-                        {/* Middle financial statistics */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 bg-[#151722] p-4 rounded-2xl border border-white/5 text-xs">
-                          <div>
-                            <span className="text-gray-500 block">Principal Amount</span>
-                            <span className="font-bold text-white text-sm font-mono">${loan.principalAmount}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500 block">Interest & EMI</span>
-                            <span className="font-bold text-[#E1AAFF] text-sm font-mono">{loan.interestRate}% (${loan.emiAmount}/mo)</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500 block">Remaining Dues</span>
-                            <span className="font-bold text-pink-400 text-sm font-mono">${loan.remainingAmount.toFixed(2)} ({loan.remainingInstallments} EMIs)</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500 block">Auto EMI Schedule</span>
-                            <span className="font-bold text-cyan-400 text-sm font-mono">Day {loan.deductionDayOfMonth} of every month</span>
-                          </div>
-                        </div>
-
-                        {/* Progress bar */}
-                        {(loan.status === 'ACTIVE' || loan.status === 'OVERDUE' || loan.status === 'COMPLETED' || loan.status === 'FORECLOSED') && (
-                          <div className="mb-6">
-                            <div className="flex justify-between text-xs mb-1.5 font-bold">
-                              <span className="text-gray-400">Repayment Progress</span>
-                              <span className="text-emerald-400 font-mono">{progressPercent}% Settled</span>
-                            </div>
-                            <div className="w-full h-2.5 bg-[#151722] rounded-full overflow-hidden border border-white/5">
-                              <div 
-                                className="h-full bg-gradient-to-r from-[#00D1FF] via-[#BD88FF] to-emerald-400 transition-all duration-1000" 
-                                style={{ width: `${progressPercent}%` }}
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Actions footer */}
-                        <div className="flex flex-wrap justify-end items-center gap-3 pt-2">
-                          
-                          {/* PENDING LOAN ACCEPTANCE BUTTONS */}
-                          {loan.status === 'PENDING' && isBorrower && (
-                            <button
-                              onClick={() => setShowAcceptModal(loan)}
-                              className="py-2.5 px-6 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs rounded-xl transition shadow-lg flex items-center gap-1.5 active:scale-95"
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                              <span>Accept & Receive ${loan.principalAmount} Principal</span>
-                            </button>
-                          )}
-                          {loan.status === 'PENDING' && isLender && (
-                            <button
-                              onClick={() => setShowAcceptModal(loan)}
-                              className="py-2.5 px-6 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs rounded-xl transition shadow-lg flex items-center gap-1.5 active:scale-95"
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                              <span>Approve & Disperse ${loan.principalAmount}</span>
-                            </button>
-                          )}
-
-                          {/* FORECLOSURE KILLER FEATURE BUTTON (Borrower Only when Active/Overdue) */}
-                          {['ACTIVE', 'OVERDUE'].includes(loan.status) && isBorrower && (
-                            <button
-                              onClick={() => setShowForecloseModal(loan)}
-                              className="py-3 px-6 bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:opacity-95 text-white font-black text-xs rounded-2xl shadow-xl shadow-pink-500/20 active:scale-95 flex items-center gap-2 animate-pulse"
-                            >
-                              <Sparkles className="w-4 h-4 text-amber-300" />
-                              <span>Pay Full Amount / Foreclose ($0 Fees)</span>
-                            </button>
-                          )}
-
-                          {['ACTIVE', 'OVERDUE'].includes(loan.status) && isLender && (
-                            <span className="text-xs text-gray-400 italic">
-                              Automated withdrawal runs on day {loan.deductionDayOfMonth} (or click Test Simulate EMI Cron).
-                            </span>
-                          )}
-
-                          {(loan.status === 'FORECLOSED' || loan.status === 'COMPLETED') && (
-                            <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Agreement Settle & Terminated
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
               )}
             </div>
           </div>
-        )}
+        );
 
-        {/* TAB 3: TRANSACTION AUDIT LEDGER */}
-        {activeTab === "HISTORY" && (
-          <div className="bg-[#161922] p-6 md:p-8 rounded-[32px] border border-white/10 animate-in fade-in duration-300">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="text-xl font-black text-white">Immutable Audit Ledger</h3>
-                <p className="text-xs text-gray-400">All UPI transfers, P2P loans, EMIs, and foreclosures recorded with ACID consistency</p>
+        // ACCEPT LOAN
+        if (modal === "accept" && modalData) return (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+            <div className="modal">
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Accept Loan & Receive Funds</h3>
+                <button className="btn btn-ghost btn-sm" onClick={closeModal}><Icon d={icons.x} size={16} /></button>
               </div>
-              <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-mono text-gray-300">
-                {transactions.length} Records
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {transactions.length === 0 ? (
-                <p className="text-center py-12 text-gray-500 text-sm">No recorded transactions in your ledger.</p>
-              ) : (
-                transactions.map(t => {
-                  const isOutgoing = t.senderName === userInfo.name || t.senderName === userInfo.username;
-                  return (
-                    <div
-                      key={t._id}
-                      onClick={() => setSelectedReceipt(t)}
-                      className="p-4 bg-[#1B1E2B] hover:bg-[#232738] rounded-2xl border border-white/5 hover:border-white/20 transition cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-                    >
-                      <div className="flex items-center gap-3.5">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold flex-shrink-0 ${
-                          t.type === 'LOAN_FORECLOSURE' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
-                          t.type === 'EMI_DEDUCTION' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' :
-                          isOutgoing ? 'bg-pink-500/20 text-pink-400' : 'bg-emerald-500/20 text-emerald-400'
-                        }`}>
-                          {isOutgoing ? <ArrowUpRight className="w-6 h-6" /> : <ArrowDownLeft className="w-6 h-6" />}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-[10px] uppercase font-black px-2 py-0.5 bg-white/5 rounded text-gray-300 border border-white/10">
-                              {t.type}
-                            </span>
-                            <span className="text-xs font-bold text-gray-400">Ref: {t.referenceId}</span>
-                          </div>
-                          <h4 className="text-sm font-extrabold text-white">{t.description || t.category}</h4>
-                          <p className="text-xs text-gray-500 font-mono">
-                            {isOutgoing ? `To: ${t.receiverName} (${t.receiverUpiId})` : `From: ${t.senderName} (${t.senderUpiId})`} • {new Date(t.createdAt).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="text-right w-full sm:w-auto flex sm:flex-col justify-between sm:justify-end items-center sm:items-end">
-                        <span className="text-xs text-gray-500 sm:hidden">Amount</span>
-                        <span className={`font-mono font-extrabold text-lg ${isOutgoing ? 'text-pink-400' : 'text-emerald-400'}`}>
-                          {isOutgoing ? '-' : '+'}${t.amount.toFixed(2)}
-                        </span>
-                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${t.status === 'SUCCESS' ? 'text-emerald-400' : 'text-red-400'}`}>
-                          ● {t.status}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 4: NOTIFICATION & EMAIL INBOX (SEE INSUFFICIENT BALANCE ALERT EMAILS) */}
-        {activeTab === "NOTIFICATIONS" && (
-          <div className="bg-[#161922] p-6 md:p-8 rounded-[32px] border border-white/10 animate-in fade-in duration-300">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="text-xl font-black text-white flex items-center gap-2">
-                  <Mail className="w-5 h-5 text-[#BD88FF]" />
-                  <span>Alerts & Dispatched Email Inbox</span>
-                </h3>
-                <p className="text-xs text-gray-400">Real-time log of all automatic EMI deduction notifications and simulated Ethereal emails</p>
+              <div className="alert alert-info" style={{ marginBottom: 16 }}>
+                {fmt(modalData.principalAmount)} will be instantly credited to your wallet. Monthly EMI of {fmt(modalData.emiAmount)} will auto-deduct on day {modalData.deductionDayOfMonth}.
               </div>
-              <button
-                onClick={async () => {
-                  await axios.put("http://localhost:3000/pytm/notifications/mark-read", {}, authHeader);
-                  loadAllData();
-                }}
-                className="text-xs font-bold text-[#E1AAFF] hover:underline"
-              >
-                Mark All Read
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {notifications.length === 0 ? (
-                <p className="text-center py-12 text-gray-500 text-sm">Your alert inbox is completely clear!</p>
-              ) : (
-                notifications.map(n => (
-                  <div 
-                    key={n._id}
-                    className={`p-5 rounded-3xl border transition flex items-start gap-4 ${
-                      n.type === 'EMAIL_ALERT' 
-                        ? 'bg-[#281825] border-pink-500/40 shadow-lg shadow-pink-500/5' 
-                        : 'bg-[#1B1E2B] border-white/5'
-                    }`}
-                  >
-                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${n.type === 'EMAIL_ALERT' ? 'bg-pink-500 text-white animate-pulse' : 'bg-white/10 text-[#00D1FF]'}`}>
-                      {n.type === 'EMAIL_ALERT' ? <AlertTriangle className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
-                    </div>
-                    
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <h4 className="text-sm font-black text-white flex items-center gap-2">
-                          <span>{n.title}</span>
-                          {n.emailStatus && n.emailStatus !== 'N/A' && (
-                            <span className="text-[10px] px-2 py-0.5 bg-pink-500/20 text-pink-300 border border-pink-500/30 rounded-full">
-                              ✉️ EMAIL {n.emailStatus}
-                            </span>
-                          )}
-                        </h4>
-                        <span className="text-[10px] text-gray-500 font-mono">{new Date(n.createdAt).toLocaleTimeString()}</span>
-                      </div>
-                      
-                      <p className="text-xs text-gray-300 font-medium leading-relaxed mb-3">{n.message}</p>
-
-                      {n.previewUrl && (
-                        <a 
-                          href={n.previewUrl} 
-                          target="_blank" 
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs font-black text-[#00D1FF] bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-xl border border-cyan-500/20 transition"
-                        >
-                          <span>Open Dispatched Ethereal Email Web Preview</span>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-      </main>
-
-      {/* --- MODAL 1: SEND MONEY / UPI TRANSFER --- */}
-      {showSendModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-[#1C1F2D] w-full max-w-md rounded-[32px] border border-white/10 p-6 md:p-8 shadow-2xl relative animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
-                <Send className="w-5 h-5 text-[#00D1FF]" />
-                <span>Instant UPI Pay</span>
-              </h3>
-              <button onClick={() => setShowSendModal(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white">
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSendMoney} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-gray-300 uppercase tracking-wider block mb-1">Receiver UPI ID or Username</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. alex@shivampay or alex"
-                  value={sendForm.receiverIdentifier}
-                  onChange={(e) => setSendForm({ ...sendForm, receiverIdentifier: e.target.value })}
-                  className="w-full px-4 py-3 bg-[#161822] border border-white/10 rounded-2xl text-sm text-white placeholder-gray-500 outline-none focus:border-[#E1AAFF]"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-gray-300 uppercase tracking-wider block mb-1">Amount ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  placeholder="0.00"
-                  value={sendForm.amount}
-                  onChange={(e) => setSendForm({ ...sendForm, amount: e.target.value })}
-                  className="w-full px-4 py-3 bg-[#161822] border border-white/10 rounded-2xl text-2xl font-black font-mono text-white placeholder-gray-600 outline-none focus:border-[#00D1FF]"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-gray-300 uppercase tracking-wider block mb-1">Remarks / Description</label>
-                <input
-                  type="text"
-                  placeholder="Dinner, rent, gift..."
-                  value={sendForm.description}
-                  onChange={(e) => setSendForm({ ...sendForm, description: e.target.value })}
-                  className="w-full px-4 py-3 bg-[#161822] border border-white/10 rounded-2xl text-xs text-white placeholder-gray-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1 mb-1">
-                  <Lock className="w-3.5 h-3.5" /> 4-Digit UPI PIN (Default: 1234)
-                </label>
-                <input
-                  type="password"
-                  maxLength="4"
-                  required
-                  placeholder="••••"
-                  value={sendForm.pin}
-                  onChange={(e) => setSendForm({ ...sendForm, pin: e.target.value })}
-                  className="w-full px-4 py-3 bg-[#161822] border border-amber-400/30 rounded-2xl text-center text-xl font-black font-mono text-white placeholder-gray-600 outline-none focus:ring-2 focus:ring-amber-400"
-                />
-              </div>
-
-              {txnStatus.state !== "IDLE" && (
-                <div className={`p-3 rounded-xl text-center text-xs font-extrabold ${txnStatus.state === 'ERROR' ? 'bg-red-500/20 text-red-300 border border-red-500/40' : 'bg-emerald-500/20 text-emerald-300 animate-pulse'}`}>
-                  {txnStatus.msg}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={txnStatus.state === "PROCESSING"}
-                className="w-full py-4 bg-gradient-to-r from-[#E1AAFF] via-[#BD88FF] to-[#00D1FF] text-[#1a0b36] font-extrabold rounded-2xl transition shadow-xl active:scale-95 text-sm"
-              >
-                {txnStatus.state === "PROCESSING" ? "Securing Transfer..." : "Authorize Pay With PIN"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* --- MODAL 2: RECEIVE / MY QR CODE --- */}
-      {showQrModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-[#1C1F2D] w-full max-w-sm rounded-[32px] border border-white/10 p-8 shadow-2xl relative text-center animate-in zoom-in-95 duration-200">
-            <div className="flex justify-end mb-2">
-              <button onClick={() => setShowQrModal(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white">
-                ✕
-              </button>
-            </div>
-            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#E1AAFF] to-[#00D1FF] mx-auto mb-3 flex items-center justify-center text-[#1a0b36] font-extrabold text-2xl shadow-md">
-              {userInfo.name?.charAt(0) || "U"}
-            </div>
-            <h3 className="text-lg font-extrabold text-white">{userInfo.name || userInfo.username}</h3>
-            <p className="text-xs font-mono text-[#00D1FF] font-bold mb-6">@{userInfo.upiId || `${userInfo.username}@shivampay`}</p>
-            
-            <div className="p-6 bg-white rounded-3xl inline-block shadow-2xl mb-6">
-              <QRCodeSVG
-                value={`shivampay://upi/pay?pa=${userInfo.upiId}&pn=${encodeURIComponent(userInfo.name || '')}`}
-                size={180}
-                bgColor={"#FFFFFF"}
-                fgColor={"#161922"}
-                level={"H"}
-                includeMargin={false}
-              />
-            </div>
-
-            <p className="text-[11px] text-gray-400 font-medium">
-              Scan this interoperable QR code with any camera or PhonePe/GPay simulation scanner to receive funds instantly!
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* --- MODAL 3: SCAN & PAY (SIMULATED CAMERA QR SCANNER) --- */}
-      {showScanPayModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-[#1C1F2D] w-full max-w-md rounded-[32px] border border-white/10 p-6 md:p-8 shadow-2xl relative animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
-                <QrCode className="w-5 h-5 text-[#E1AAFF]" />
-                <span>QR Scanner & Instant Pay</span>
-              </h3>
-              <button onClick={() => setShowScanPayModal(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-gray-400">
-                ✕
-              </button>
-            </div>
-
-            {/* Simulated Camera Viewfinder */}
-            <div className="w-full h-52 bg-black/60 rounded-3xl border-2 border-dashed border-[#00D1FF]/50 relative flex flex-col items-center justify-center overflow-hidden mb-6 group">
-              <div className="w-40 h-40 border-2 border-[#00D1FF] rounded-2xl relative flex items-center justify-center">
-                <div className="w-full h-0.5 bg-[#E1AAFF] absolute top-1/2 -translate-y-1/2 shadow-[0_0_15px_#E1AAFF] animate-pulse" />
-                <span className="text-xs text-gray-400 bg-black/80 px-3 py-1 rounded-full border border-white/10">
-                  Camera Viewfinder Active
-                </span>
-              </div>
-            </div>
-
-            <div className="text-center mb-4">
-              <span className="text-xs font-bold text-gray-400">Or Select a User QR below to simulate scanning:</span>
-            </div>
-
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-2 scrollbar-hide mb-6">
-              {users.map(u => (
-                <div
-                  key={u._id}
-                  onClick={() => {
-                    setSendForm({ ...sendForm, receiverIdentifier: u.upiId || `${u.username}@shivampay`, amount: "50" });
-                    setShowScanPayModal(false);
-                    setShowSendModal(true);
-                  }}
-                  className="p-3 bg-[#161822] hover:bg-[#202434] rounded-2xl border border-white/5 cursor-pointer flex items-center justify-between transition"
-                >
-                  <div className="flex items-center gap-3">
-                    <QrCode className="w-5 h-5 text-[#E1AAFF]" />
-                    <span className="text-xs font-extrabold text-white">{u.name} (QR: @{u.username})</span>
-                  </div>
-                  <span className="text-xs text-cyan-400 font-bold">Tap to Scan ➔</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* --- MODAL 4: PAY BILLS --- */}
-      {showBillModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-[#1C1F2D] w-full max-w-md rounded-[32px] border border-white/10 p-6 md:p-8 shadow-2xl relative animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
-                <ReceiptText className="w-5 h-5 text-emerald-400" />
-                <span>Utility Bill Payment</span>
-              </h3>
-              <button onClick={() => setShowBillModal(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-gray-400">✕</button>
-            </div>
-
-            <form onSubmit={handlePayBill} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-gray-300 uppercase block mb-1">Select Category</label>
-                <select 
-                  value={billForm.category}
-                  onChange={(e) => setBillForm({ ...billForm, category: e.target.value })}
-                  className="w-full px-4 py-3 bg-[#161822] border border-white/10 rounded-2xl text-sm text-white outline-none"
-                >
-                  <option value="Electricity">Electricity Board</option>
-                  <option value="Recharge">Mobile Recharge (5G Unlimited)</option>
-                  <option value="DTH">DTH / Tata Sky TV</option>
-                  <option value="Water">Municipal Water Supply</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-gray-300 uppercase block mb-1">Biller Name</label>
-                <input
-                  type="text"
-                  required
-                  value={billForm.billerName}
-                  onChange={(e) => setBillForm({ ...billForm, billerName: e.target.value })}
-                  className="w-full px-4 py-3 bg-[#161822] border border-white/10 rounded-2xl text-sm text-white outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-gray-300 uppercase block mb-1">Bill Amount ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={billForm.amount}
-                  onChange={(e) => setBillForm({ ...billForm, amount: e.target.value })}
-                  className="w-full px-4 py-3 bg-[#161822] border border-white/10 rounded-2xl text-xl font-black font-mono text-white outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-amber-300 uppercase flex items-center gap-1 mb-1">
-                  <Lock className="w-3.5 h-3.5" /> Confirm UPI PIN
-                </label>
-                <input
-                  type="password"
-                  maxLength="4"
-                  required
-                  placeholder="••••"
-                  value={billForm.pin}
-                  onChange={(e) => setBillForm({ ...billForm, pin: e.target.value })}
-                  className="w-full px-4 py-3 bg-[#161822] border border-amber-400/30 rounded-2xl text-center text-xl font-black font-mono text-white outline-none"
-                />
-              </div>
-
-              {txnStatus.state !== "IDLE" && (
-                <div className={`p-3 rounded-xl text-center text-xs font-extrabold ${txnStatus.state === 'ERROR' ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300 animate-pulse'}`}>
-                  {txnStatus.msg}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={txnStatus.state === "PROCESSING"}
-                className="w-full py-4 bg-emerald-400 hover:bg-emerald-300 text-black font-extrabold rounded-2xl transition shadow-xl active:scale-95 text-sm"
-              >
-                {txnStatus.state === "PROCESSING" ? "Paying Bill..." : "Pay Bill Instantly"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* --- MODAL 5: NEW LOAN AGREEMENT --- */}
-      {showLoanModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-[#1C1F2D] w-full max-w-lg rounded-[32px] border border-white/10 p-6 md:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
-                  <HandCoins className="w-5 h-5 text-[#E1AAFF]" />
-                  <span>P2P Friend Loan Agreement</span>
-                </h3>
-                <p className="text-xs text-gray-400">Define principal, interest rate, and automated monthly withdrawal date</p>
-              </div>
-              <button onClick={() => setShowLoanModal(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-gray-400">✕</button>
-            </div>
-
-            <form onSubmit={handleCreateLoan} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 p-1.5 bg-[#161822] rounded-2xl border border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setLoanForm({ ...loanForm, role: "LENDER" })}
-                  className={`py-2 rounded-xl text-xs font-black transition ${loanForm.role === 'LENDER' ? 'bg-[#E1AAFF] text-[#1a0b36] shadow' : 'text-gray-400'}`}
-                >
-                  🤝 I want to Lend Money
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLoanForm({ ...loanForm, role: "BORROWER" })}
-                  className={`py-2 rounded-xl text-xs font-black transition ${loanForm.role === 'BORROWER' ? 'bg-[#00D1FF] text-[#1a0b36] shadow' : 'text-gray-400'}`}
-                >
-                  🙏 I want to Request Loan
+              <div><label className="label">UPI PIN to Authorize</label>
+                <input className="input" type="password" maxLength={4} placeholder="••••"
+                  style={{ textAlign: "center", fontSize: 20, fontFamily: "JetBrains Mono, monospace", letterSpacing: 8 }}
+                  value={pinInput} onChange={e => setPin(e.target.value)} /></div>
+              <StatusBar />
+              <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                <button className="btn btn-outline" style={{ flex: 1 }} onClick={closeModal}>Cancel</button>
+                <button className="btn btn-green" style={{ flex: 2 }} onClick={handleAccept} disabled={txnState.status === "loading"}>
+                  {txnState.status === "loading" ? "Processing..." : `Accept & Receive ${fmt(modalData.principalAmount)}`}
                 </button>
               </div>
-
-              <div>
-                <label className="text-xs font-bold text-gray-300 uppercase block mb-1">Partner Username or UPI ID</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. bob or bob@shivampay"
-                  value={loanForm.partnerUsername}
-                  onChange={(e) => setLoanForm({ ...loanForm, partnerUsername: e.target.value })}
-                  className="w-full px-4 py-3 bg-[#161822] border border-white/10 rounded-2xl text-sm text-white outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-gray-300 uppercase block mb-1">Principal ($)</label>
-                  <input
-                    type="number"
-                    required
-                    value={loanForm.principalAmount}
-                    onChange={(e) => setLoanForm({ ...loanForm, principalAmount: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-[#161822] border border-white/10 rounded-2xl font-mono text-base font-bold text-white outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-300 uppercase block mb-1">Interest Rate (%)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    required
-                    value={loanForm.interestRate}
-                    onChange={(e) => setLoanForm({ ...loanForm, interestRate: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-[#161822] border border-white/10 rounded-2xl font-mono text-base font-bold text-white outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-gray-300 uppercase block mb-1">Tenure (Months/EMIs)</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    max="60"
-                    value={loanForm.durationMonths}
-                    onChange={(e) => setLoanForm({ ...loanForm, durationMonths: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-[#161822] border border-white/10 rounded-2xl font-mono text-base font-bold text-white outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-300 uppercase block mb-1">EMI Auto Deduction Day</label>
-                  <select
-                    value={loanForm.deductionDayOfMonth}
-                    onChange={(e) => setLoanForm({ ...loanForm, deductionDayOfMonth: e.target.value })}
-                    className="w-full px-4 py-3 bg-[#161822] border border-white/10 rounded-2xl text-sm text-white outline-none"
-                  >
-                    {[1, 5, 10, 15, 20, 25, 28].map(d => (
-                      <option key={d} value={d}>{d}th of every month</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Instant Automated EMI Math Showcase Card */}
-              <div className="p-4 bg-[#141620] rounded-2xl border border-[#BD88FF]/30 text-xs space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Total Interest Payable:</span>
-                  <span className="font-mono font-bold text-amber-300">${calcInterest.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Total Payable Dues:</span>
-                  <span className="font-mono font-bold text-white">${calcTotalPayable.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between pt-1 border-t border-white/10 text-sm font-extrabold text-[#00D1FF]">
-                  <span>Estimated Monthly Automated EMI:</span>
-                  <span className="font-mono">${calcEmi.toFixed(2)}/mo</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-gray-300 uppercase block mb-1">Agreement Remarks / Title</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Startup Seed Funding / Macbook purchase"
-                  value={loanForm.remarks}
-                  onChange={(e) => setLoanForm({ ...loanForm, remarks: e.target.value })}
-                  className="w-full px-4 py-3 bg-[#161822] border border-white/10 rounded-2xl text-xs text-white outline-none"
-                />
-              </div>
-
-              {txnStatus.state !== "IDLE" && (
-                <div className={`p-3 rounded-xl text-center text-xs font-extrabold ${txnStatus.state === 'ERROR' ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300 animate-pulse'}`}>
-                  {txnStatus.msg}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={txnStatus.state === "PROCESSING"}
-                className="w-full py-4 bg-gradient-to-r from-[#E1AAFF] via-[#BD88FF] to-[#00D1FF] text-[#1a0b36] font-extrabold rounded-2xl transition shadow-xl active:scale-95 text-sm"
-              >
-                {txnStatus.state === "PROCESSING" ? "Submitting Proposal..." : "Submit Loan Proposal"}
-              </button>
-            </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
 
-      {/* --- MODAL 6: FORECLOSURE CONFIRMATION (ONE CLICK ZERO FEE PREPAYMENT) --- */}
-      {showForecloseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-[#1C1F2D] w-full max-w-md rounded-[32px] border border-pink-500/40 p-6 md:p-8 shadow-2xl relative text-center animate-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 bg-pink-500/20 text-pink-400 rounded-2xl mx-auto mb-4 flex items-center justify-center border border-pink-500/40 shadow-lg">
-              <Sparkles className="w-8 h-8 animate-spin" />
+        // FORECLOSE
+        if (modal === "foreclose" && modalData) return (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+            <div className="modal">
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Settle Loan Early</h3>
+                <button className="btn btn-ghost btn-sm" onClick={closeModal}><Icon d={icons.x} size={16} /></button>
+              </div>
+              <div style={{ background: "#f9f9fc", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
+                {[["Remaining Balance", fmt(modalData.remainingAmount)], ["Early Closure Fee", "₹0.00"], ["You Pay", fmt(modalData.remainingAmount)]].map(([l, v], i) => (
+                  <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: i < 2 ? "1px solid #e5e5ef" : "none", fontWeight: i === 2 ? 800 : 500, color: i === 2 ? "#111118" : "#6b6b7b", fontSize: i === 2 ? 15 : 13 }}>
+                    <span>{l}</span><span style={{ fontFamily: "JetBrains Mono, monospace", color: i === 1 ? "#10b981" : "inherit" }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label className="label">UPI PIN to Confirm</label>
+                <input className="input" type="password" maxLength={4} placeholder="••••"
+                  style={{ textAlign: "center", fontSize: 20, fontFamily: "JetBrains Mono, monospace", letterSpacing: 8 }}
+                  value={pinInput} onChange={e => setPin(e.target.value)} />
+              </div>
+              <StatusBar />
+              <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                <button className="btn btn-outline" style={{ flex: 1 }} onClick={closeModal}>Cancel</button>
+                <button className="btn btn-primary" style={{ flex: 2 }} onClick={handleForeclose} disabled={txnState.status === "loading"}>
+                  {txnState.status === "loading" ? "Settling..." : "Confirm & Settle — ₹0 Fee"}
+                </button>
+              </div>
             </div>
-            <h3 className="text-2xl font-black text-white mb-1">One-Click Foreclosure</h3>
-            <p className="text-xs text-gray-300 mb-6 font-medium leading-relaxed">
-              You are about to settle and terminate Loan #{showForecloseModal._id.toString().slice(-6)} completely at a time. All scheduled future EMIs will stop instantly.
-            </p>
+          </div>
+        );
 
-            <div className="bg-[#161822] p-6 rounded-3xl border border-white/10 mb-6 text-left space-y-2">
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-400">Remaining Principal + Interest:</span>
-                <span className="font-mono font-bold text-white">${showForecloseModal.remainingAmount.toFixed(2)}</span>
+        // RECEIPT / INVOICE
+        if (modal === "receipt" && modalData) return (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+            <div className="modal">
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Transaction Receipt</h3>
+                <button className="btn btn-ghost btn-sm" onClick={closeModal}><Icon d={icons.x} size={16} /></button>
               </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-400">Early Closure & Penalty Fees:</span>
-                <span className="font-mono font-extrabold text-emerald-400">$0.00 (100% Free!)</span>
+              <div style={{ textAlign: "center", marginBottom: 20 }}>
+                <div style={{ width: 52, height: 52, borderRadius: 16, background: "#d1fae5", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 10px" }}>
+                  <Icon d={icons.check} size={24} stroke="#10b981" sw="2.5" />
+                </div>
+                <div style={{ fontSize: 28, fontWeight: 900, fontFamily: "JetBrains Mono, monospace", color: "#111118" }}>{fmt(modalData.amount)}</div>
+                <span className={`badge badge-${modalData.status === "SUCCESS" ? "green" : "red"}`} style={{ marginTop: 6 }}>{modalData.status}</span>
               </div>
-              <div className="flex justify-between text-base font-black text-[#00D1FF] pt-2 border-t border-white/10">
-                <span>Final Settlement Pay:</span>
-                <span className="font-mono">${showForecloseModal.remainingAmount.toFixed(2)}</span>
+              <div style={{ background: "#f9f9fc", borderRadius: 12, padding: "14px 16px" }}>
+                {[
+                  ["Reference", modalData.referenceId],
+                  ["Type", modalData.type],
+                  ["From", `${modalData.senderName} (${modalData.senderUpiId})`],
+                  ["To", `${modalData.receiverName} (${modalData.receiverUpiId})`],
+                  ["Date & Time", new Date(modalData.createdAt).toLocaleString("en-IN")],
+                  ["Description", modalData.description || "—"],
+                ].map(([l, v]) => (
+                  <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: "1px solid #e5e5ef", fontSize: 13, gap: 12 }}>
+                    <span style={{ color: "#9898a8", fontWeight: 600, flexShrink: 0 }}>{l}</span>
+                    <span style={{ color: "#111118", fontWeight: 500, textAlign: "right", wordBreak: "break-all" }}>{v}</span>
+                  </div>
+                ))}
               </div>
-            </div>
-
-            <div className="mb-6 text-left">
-              <label className="text-xs font-bold text-amber-300 uppercase flex items-center gap-1 mb-1.5">
-                <Lock className="w-3.5 h-3.5" /> Confirm UPI PIN to Execute Foreclosure
-              </label>
-              <input
-                type="password"
-                maxLength="4"
-                id="foreclosePinInput"
-                placeholder="••••"
-                defaultValue=""
-                className="w-full px-4 py-3 bg-[#161822] border border-amber-400/40 rounded-2xl text-center text-2xl font-black font-mono text-white outline-none focus:ring-2 focus:ring-amber-400"
-              />
-            </div>
-
-            {txnStatus.state !== "IDLE" && (
-              <div className={`p-3 rounded-xl text-center text-xs font-extrabold mb-4 ${txnStatus.state === 'ERROR' ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300 animate-pulse'}`}>
-                {txnStatus.msg}
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowForecloseModal(null)}
-                className="flex-1 py-3.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-bold text-sm transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  const pinVal = document.getElementById("foreclosePinInput").value;
-                  handleForeclose(pinVal);
-                }}
-                disabled={txnStatus.state === "PROCESSING"}
-                className="flex-1 py-3.5 bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 text-white font-black rounded-2xl shadow-xl transition active:scale-95 text-sm"
-              >
-                {txnStatus.state === "PROCESSING" ? "Processing..." : "Confirm & Settle Now"}
+              <button className="btn btn-outline" style={{ width: "100%", marginTop: 14 }} onClick={() => window.print()}>
+                🖨️ Print / Save PDF
               </button>
             </div>
           </div>
-        </div>
-      )}
+        );
 
-      {/* --- MODAL 7: ACCEPT & DISBURSE LOAN --- */}
-      {showAcceptModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-[#1C1F2D] w-full max-w-md rounded-[32px] border border-emerald-500/40 p-6 md:p-8 shadow-2xl relative text-center animate-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-2xl mx-auto mb-4 flex items-center justify-center border border-emerald-500/40">
-              <CheckCircle2 className="w-8 h-8" />
-            </div>
-            <h3 className="text-2xl font-black text-white mb-1">Confirm Loan Dispersal</h3>
-            <p className="text-xs text-gray-300 mb-6 font-medium">
-              By confirming, ${showAcceptModal.principalAmount} will be atomically dispersed. Automated EMI of ${showAcceptModal.emiAmount} will run on day {showAcceptModal.deductionDayOfMonth} of every month.
-            </p>
+        return null;
+      })()}
 
-            <div className="mb-6 text-left">
-              <label className="text-xs font-bold text-amber-300 uppercase flex items-center gap-1 mb-1">
-                <Lock className="w-3.5 h-3.5" /> Enter UPI PIN to Authorize
-              </label>
-              <input
-                type="password"
-                maxLength="4"
-                id="acceptPinInput"
-                placeholder="••••"
-                className="w-full px-4 py-3 bg-[#161822] border border-amber-400/30 rounded-2xl text-center text-2xl font-black font-mono text-white outline-none focus:ring-2 focus:ring-amber-400"
-              />
-            </div>
-
-            {txnStatus.state !== "IDLE" && (
-              <div className={`p-3 rounded-xl text-center text-xs font-extrabold mb-4 ${txnStatus.state === 'ERROR' ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300 animate-pulse'}`}>
-                {txnStatus.msg}
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <button onClick={() => setShowAcceptModal(null)} className="flex-1 py-3.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-bold text-sm transition">
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  const pinVal = document.getElementById("acceptPinInput").value;
-                  handleAcceptLoan(pinVal);
-                }}
-                disabled={txnStatus.state === "PROCESSING"}
-                className="flex-1 py-3.5 bg-emerald-400 hover:bg-emerald-300 text-black font-black rounded-2xl shadow-xl transition active:scale-95 text-sm"
-              >
-                {txnStatus.state === "PROCESSING" ? "Dispersing..." : "Authorize Agreement"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* --- MODAL 8: TRANSACTION INVOICE / RECEIPT VIEW --- */}
-      {selectedReceipt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-[#181B26] w-full max-w-sm rounded-[32px] border border-white/10 p-6 md:p-8 shadow-2xl relative animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-6">
-              <span className="text-xs font-mono uppercase font-black px-3 py-1 bg-white/10 rounded-full text-[#00D1FF]">
-                Verified Invoice
-              </span>
-              <button onClick={() => setSelectedReceipt(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-gray-400">✕</button>
-            </div>
-
-            <div className="text-center mb-6 border-b border-white/10 pb-6">
-              <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 mx-auto mb-2 flex items-center justify-center border border-emerald-500/40">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">Transaction Amount</p>
-              <h2 className="text-4xl font-mono font-extrabold text-white">${selectedReceipt.amount.toFixed(2)}</h2>
-              <p className="text-xs text-emerald-400 font-bold mt-1">● COMPLETED WITH ACID ATOMICITY</p>
-            </div>
-
-            <div className="space-y-3 text-xs mb-6 font-medium">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Reference Number:</span>
-                <span className="text-white font-mono">{selectedReceipt.referenceId}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Payment Type:</span>
-                <span className="text-white font-bold">{selectedReceipt.type}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Sender / From:</span>
-                <span className="text-white">{selectedReceipt.senderName} ({selectedReceipt.senderUpiId})</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Receiver / To:</span>
-                <span className="text-white">{selectedReceipt.receiverName} ({selectedReceipt.receiverUpiId})</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Timestamp:</span>
-                <span className="text-white">{new Date(selectedReceipt.createdAt).toLocaleString()}</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => window.print()}
-              className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-2xl transition text-xs"
-            >
-              🖨️ Print / Save PDF Invoice
-            </button>
-          </div>
-        </div>
-      )}
-
-    </div>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes scan { 0%, 100% { transform: translateY(-40px); } 50% { transform: translateY(40px); } }
+      `}</style>
+    </>
   );
 }

@@ -1,163 +1,77 @@
 import { useNavigate } from "react-router-dom";
-import { ShieldCheck, Zap, HandCoins, QrCode, ArrowRight, Sparkles, ReceiptText, CheckCircle2 } from "lucide-react";
 
 export default function LandingPage() {
-    const navigate = useNavigate();
-
-    return (
-        <div className="bg-[#0A0D14] min-h-screen text-slate-100 font-sans overflow-x-hidden pb-24 relative selection:bg-purple-500 selection:text-white">
-            
-            {/* Background Kinetic Glows */}
-            <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
-               <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-purple-600/15 rounded-full blur-[160px] pointer-events-none" />
-               <div className="absolute top-1/3 -right-40 w-[500px] h-[500px] bg-cyan-500/15 rounded-full blur-[160px] pointer-events-none" />
-               <div className="absolute -bottom-40 left-1/4 w-[600px] h-[600px] bg-indigo-600/15 rounded-full blur-[160px] pointer-events-none" />
-            </div>
-
-            {/* Top Glassmorphic Navbar */}
-            <header className="sticky top-0 z-40 bg-[#0A0D14]/80 backdrop-blur-xl border-b border-white/10">
-              <div className="max-w-6xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#E1AAFF] via-[#BD88FF] to-[#00D1FF] p-[2px] shadow-lg shadow-purple-500/20">
-                     <div className="w-full h-full bg-[#121520] rounded-[14px] flex items-center justify-center font-black text-[#E1AAFF] text-base tracking-tight">
-                        SP
-                     </div>
-                  </div>
-                  <span className="text-xl md:text-2xl font-black tracking-tight text-white">
-                      ShivamPay<span className="text-[#00D1FF] font-bold">.</span>
-                  </span>
-                </div>
-
-                <div className="hidden lg:flex items-center gap-8 font-bold text-xs uppercase tracking-wider text-slate-400">
-                    <span className="text-[#E1AAFF] flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> Free UPI Service</span>
-                    <span className="hover:text-white transition">P2P Friend Loans</span>
-                    <span className="hover:text-white transition">Auto EMI Engine</span>
-                    <span className="text-emerald-400 font-extrabold">0% Fee Foreclosure</span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    <button 
-                        onClick={() => navigate('/login')} 
-                        className="px-4 py-2.5 text-xs md:text-sm font-bold text-slate-300 hover:text-white transition active:scale-95"
-                    >
-                        Sign In
-                    </button>
-                    <button 
-                        onClick={() => navigate('/register')} 
-                        className="px-5 py-2.5 bg-gradient-to-r from-[#E1AAFF] via-[#BD88FF] to-[#00D1FF] text-[#140C28] font-black text-xs md:text-sm rounded-xl hover:opacity-95 transition shadow-lg shadow-cyan-500/20 active:scale-95 flex items-center gap-1.5"
-                    >
-                        <span>Launch App</span>
-                        <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-                    </button>
-                </div>
-              </div>
-            </header>
-
-            {/* Hero Section */}
-            <main className="max-w-5xl mx-auto px-4 pt-16 md:pt-24 text-center relative z-10">
-                <div className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full border border-purple-500/30 bg-purple-500/10 backdrop-blur-md text-xs font-extrabold text-[#E1AAFF] shadow-inner">
-                    <Sparkles className="w-4 h-4 text-[#00D1FF] animate-spin" />
-                    <span>Next-Generation Automated P2P Lending & Free UPI Ecosystem</span>
-                </div>
-                
-                <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight mb-6 leading-[1.08] max-w-4xl mx-auto text-white">
-                    Instant UPI Payments & <br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E1AAFF] via-[#BD88FF] to-[#00D1FF]">
-                        Automated Friend Loans.
-                    </span>
-                </h1>
-                
-                <p className="text-slate-300 text-base sm:text-lg max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
-                    Generate instant personal QR codes, execute atomic PIN-protected transfers, and lend funds to trusted peers with automated monthly EMI withdrawals. Want early settlement? Foreclose anytime with $0 charges!
-                </p>
-
-                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-                    <button 
-                        onClick={() => navigate('/register')} 
-                        className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-[#E1AAFF] via-[#BD88FF] to-[#00D1FF] rounded-2xl font-extrabold text-[#140C28] text-sm sm:text-base hover:opacity-95 transition shadow-[0_0_35px_rgba(150,100,255,0.35)] transform hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2"
-                    >
-                        <span>Create Free Account ($10k Sandbox Balance)</span>
-                        <ArrowRight className="w-5 h-5 stroke-[2.5]" />
-                    </button>
-                    <button 
-                        onClick={() => navigate('/login')} 
-                        className="w-full sm:w-auto px-8 py-4 bg-[#181C26] hover:bg-[#202533] border border-white/10 rounded-2xl font-bold text-white text-sm sm:text-base transition shadow-lg active:scale-95"
-                    >
-                        Sign In to Command Center
-                    </button>
-                </div>
-
-                {/* Live Architecture Badge Box */}
-                <div className="p-6 bg-[#121622] rounded-[28px] border border-white/10 shadow-2xl mb-20 max-w-4xl mx-auto text-left flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="space-y-1 text-center md:text-left">
-                    <span className="text-emerald-400 text-xs font-black uppercase tracking-wider flex items-center justify-center md:justify-start gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 inline" /> Production ACID Atomicity Active
-                    </span>
-                    <p className="text-xs text-slate-400 font-medium">
-                      Built on Express, MongoDB Atlas & Vite React with real-time zero-fee early loan settlement.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-extrabold">
-                    <span className="px-3.5 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" /> Automated EMI Cron
-                    </span>
-                    <span className="px-3.5 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 flex items-center gap-1.5">
-                      <ReceiptText className="w-3.5 h-3.5" /> Insufficient Balance Email Alerts
-                    </span>
-                  </div>
-                </div>
-
-                {/* Features Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left w-full max-w-5xl mx-auto">
-                    <div className="p-8 bg-[#131722] rounded-[32px] border border-white/10 hover:border-[#E1AAFF]/40 transition duration-300 shadow-xl flex flex-col justify-between group">
-                        <div>
-                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#E1AAFF] to-[#BD88FF] flex items-center justify-center mb-6 text-[#140C28] shadow-lg shadow-purple-500/20 group-hover:scale-110 transition">
-                             <QrCode className="w-6 h-6 stroke-[2.3]" />
-                          </div>
-                          <h3 className="text-lg font-black text-white mb-2">Free UPI QR & Scan</h3>
-                          <p className="text-slate-400 text-xs sm:text-sm leading-relaxed font-medium">
-                              Every account gets a dedicated `@shivampay` ID and interactive SVG QR code. Receive money instantly without hidden fees.
-                          </p>
-                        </div>
-                        <div className="mt-6 pt-4 border-t border-white/5 text-[11px] font-mono text-[#E1AAFF] font-bold">
-                          ● Contactless Pay Directory Included
-                        </div>
-                    </div>
-
-                    <div className="p-8 bg-gradient-to-b from-[#181D2D] via-[#141825] to-[#141825] rounded-[32px] border border-[#00D1FF]/40 hover:border-[#00D1FF] transition duration-300 shadow-2xl flex flex-col justify-between group relative overflow-hidden">
-                        <div className="absolute top-4 right-4 bg-[#00D1FF]/20 text-[#00D1FF] text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border border-[#00D1FF]/30">
-                            Core Feature
-                        </div>
-                        <div>
-                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#00D1FF] to-[#BD88FF] flex items-center justify-center mb-6 text-[#140C28] shadow-lg shadow-cyan-500/20 group-hover:scale-110 transition">
-                             <HandCoins className="w-6 h-6 stroke-[2.3]" />
-                          </div>
-                          <h3 className="text-lg font-black text-white mb-2">P2P Loans & Auto EMI</h3>
-                          <p className="text-slate-300 text-xs sm:text-sm leading-relaxed font-medium">
-                              Lend money to friends with custom interest rates and specific monthly due dates. Our automated midnight cron engine withdraws EMIs precisely on schedule!
-                          </p>
-                        </div>
-                        <div className="mt-6 pt-4 border-t border-white/10 text-[11px] font-mono text-cyan-300 font-bold">
-                          ● Automated Ethereal Email Warnings
-                        </div>
-                    </div>
-
-                    <div className="p-8 bg-[#131722] rounded-[32px] border border-white/10 hover:border-pink-500/40 transition duration-300 shadow-xl flex flex-col justify-between group">
-                        <div>
-                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 to-[#E1AAFF] flex items-center justify-center mb-6 text-[#140C28] shadow-lg shadow-pink-500/20 group-hover:scale-110 transition">
-                             <Zap className="w-6 h-6 stroke-[2.3] fill-[#140C28]" />
-                          </div>
-                          <h3 className="text-lg font-black text-white mb-2">Zero-Fee Foreclosure</h3>
-                          <p className="text-slate-400 text-xs sm:text-sm leading-relaxed font-medium">
-                              Borrowers can clear their entire remaining balance at any time with a single click. Absolutely $0 early closure penalties or penalty interest.
-                          </p>
-                        </div>
-                        <div className="mt-6 pt-4 border-t border-white/5 text-[11px] font-mono text-emerald-400 font-bold">
-                          ● 100% Fee-Free Prepayment
-                        </div>
-                    </div>
-                </div>
-            </main>
+  const navigate = useNavigate();
+  return (
+    <div className="landing-bg" style={{ fontFamily: "Inter, sans-serif" }}>
+      {/* Nav */}
+      <nav style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #1c1c27" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #6366f1, #4f46e5)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 14 }}>SP</div>
+          <span style={{ fontSize: 20, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>ShivamPay</span>
         </div>
-    );
+        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+          <span style={{ fontSize: 13, color: "#6b6b7b", fontWeight: 500, display: "none" }}>Features</span>
+          <button onClick={() => navigate("/login")} style={{ background: "none", border: "1px solid #2a2a38", color: "#c8c8d4", padding: "8px 20px", borderRadius: 10, cursor: "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.15s" }}
+            onMouseEnter={e => { e.target.style.borderColor = "#6366f1"; e.target.style.color = "#fff"; }}
+            onMouseLeave={e => { e.target.style.borderColor = "#2a2a38"; e.target.style.color = "#c8c8d4"; }}>
+            Sign In
+          </button>
+          <button onClick={() => navigate("/register")} style={{ background: "#6366f1", border: "none", color: "#fff", padding: "9px 22px", borderRadius: 10, cursor: "pointer", fontSize: 14, fontWeight: 700, transition: "background 0.15s" }}
+            onMouseEnter={e => e.target.style.background = "#4f46e5"}
+            onMouseLeave={e => e.target.style.background = "#6366f1"}>
+            Get Started — Free
+          </button>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <div style={{ maxWidth: 800, margin: "0 auto", textAlign: "center", padding: "80px 32px 60px" }}>
+        <div style={{ display: "inline-block", fontSize: 12, fontWeight: 700, color: "#6366f1", background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: 20, padding: "5px 14px", marginBottom: 24, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+          India's Smart UPI + P2P Lending Platform
+        </div>
+        <h1 style={{ fontSize: "clamp(36px, 6vw, 60px)", fontWeight: 900, color: "#fff", lineHeight: 1.1, margin: "0 0 20px", letterSpacing: "-0.03em" }}>
+          Send money, pay bills &<br />
+          <span style={{ background: "linear-gradient(135deg, #6366f1, #06b6d4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+            lend to trusted friends.
+          </span>
+        </h1>
+        <p style={{ fontSize: 17, color: "#9898a8", lineHeight: 1.7, marginBottom: 36, maxWidth: 560, margin: "0 auto 36px" }}>
+          Free UPI payments, automated P2P loans with scheduled EMI deductions, and real money top-ups via Razorpay — all in one secure platform.
+        </p>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+          <button onClick={() => navigate("/register")} style={{ background: "#6366f1", border: "none", color: "#fff", padding: "14px 32px", borderRadius: 12, cursor: "pointer", fontSize: 15, fontWeight: 700, boxShadow: "0 4px 20px rgba(99,102,241,0.4)" }}
+            onMouseEnter={e => e.target.style.background = "#4f46e5"} onMouseLeave={e => e.target.style.background = "#6366f1"}>
+            Create Free Account →
+          </button>
+          <button onClick={() => navigate("/login")} style={{ background: "transparent", border: "1px solid #2a2a38", color: "#c8c8d4", padding: "14px 32px", borderRadius: 12, cursor: "pointer", fontSize: 15, fontWeight: 600 }}>
+            Sign In
+          </button>
+        </div>
+        <p style={{ marginTop: 16, fontSize: 12, color: "#4a4a5a" }}>✓ Free to join · ✓ ₹10,000 sandbox balance · ✓ No hidden fees</p>
+      </div>
+
+      {/* Features */}
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 32px 80px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
+        {[
+          { icon: "💳", title: "Free UPI Payments", desc: "Every user gets a personal UPI ID (@shivampay). Send, receive and scan QR codes instantly with zero platform fees.", tag: "Free" },
+          { icon: "🤝", title: "P2P Friend Loans + Auto EMI", desc: "Lend money with customizable interest rates. Our automated cron engine withdraws EMIs on your chosen date every month.", tag: "Core Feature", highlight: true },
+          { icon: "⚡", title: "Zero-Fee Foreclosure", desc: "Borrowers can settle the full loan amount at any time with absolutely zero prepayment or closure penalties.", tag: "₹0 Fee" },
+          { icon: "✉️", title: "Smart Email Alerts", desc: "If EMI can't be deducted due to low balance, an automatic email alert is sent so borrowers can top up in time.", tag: "Automated" },
+          { icon: "🔒", title: "HMAC-Secured Payments", desc: "Real Razorpay payments use SHA-256 signature verification. Your database never stores card or bank credentials.", tag: "Bank-Grade" },
+          { icon: "📊", title: "Complete Audit Ledger", desc: "Every transaction — UPI transfer, bill payment, loan disbursement, and EMI — is logged with printable invoices.", tag: "Immutable" },
+        ].map(f => (
+          <div key={f.title} style={{ background: f.highlight ? "rgba(99,102,241,0.08)" : "#111118", border: `1px solid ${f.highlight ? "rgba(99,102,241,0.3)" : "#1c1c27"}`, borderRadius: 16, padding: "24px", transition: "transform 0.2s" }}
+            onMouseEnter={e => e.currentTarget.style.transform = "translateY(-3px)"} onMouseLeave={e => e.currentTarget.style.transform = ""}>
+            <div style={{ fontSize: 28, marginBottom: 12 }}>{f.icon}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#fff" }}>{f.title}</h3>
+              <span style={{ fontSize: 10, fontWeight: 700, background: f.highlight ? "#6366f1" : "#1c1c27", color: f.highlight ? "#fff" : "#6b6b7b", borderRadius: 20, padding: "2px 8px", letterSpacing: "0.04em" }}>{f.tag}</span>
+            </div>
+            <p style={{ margin: 0, fontSize: 13, color: "#6b6b7b", lineHeight: 1.7 }}>{f.desc}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

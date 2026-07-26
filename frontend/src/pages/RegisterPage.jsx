@@ -1,164 +1,131 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { User, Lock, Mail, ArrowRight, Sparkles, ShieldCheck } from "lucide-react";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const [form, setFormdata] = useState({
-    name: '',
-    username: '',
-    email: '',
-    password: ''
-  });
-  const [response, setResponse] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [form, setForm] = useState({ name: "", username: "", email: "", password: "" });
+  const [status, setStatus] = useState({ type: "", msg: "" });
+  const [loading, setLoading] = useState(false);
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setStatus({ type: "", msg: "" });
     try {
-        setIsLoading(true);
-        setResponse("");
-
-        const res = await axios.post(
-          "http://localhost:3000/pytm/register/enter",
-          form
-        );
-        
-        localStorage.setItem("token", res.data.token);
-        localStorage.setItem("username", form.username);
-        if (res.data.user) {
-          localStorage.setItem("user", JSON.stringify(res.data.user));
-        }
-
-        setResponse(`🎉 Account created! Assigned UPI: ${form.username.toLowerCase()}@shivampay`);
-        setIsLoading(false);
-        
-        setTimeout(() => {
-            navigate('/dashboard');
-        }, 1500);
-        
+      const res = await axios.post("http://localhost:3000/pytm/register/enter", form);
+      localStorage.setItem("token", res.data.token);
+      if (res.data.user) localStorage.setItem("user", JSON.stringify(res.data.user));
+      setStatus({ type: "success", msg: `Account created! UPI ID: ${form.username.toLowerCase()}@shivampay` });
+      setTimeout(() => navigate("/dashboard"), 1000);
     } catch (err) {
-        setIsLoading(false);
-        setResponse(err.response?.data?.message || "Registration failed, please verify values.");
+      setLoading(false);
+      setStatus({ type: "error", msg: err.response?.data?.message || "Registration failed. Try again." });
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#0E1117] text-white flex flex-col items-center justify-center p-4 selection:bg-purple-500 selection:text-white">
-      <div className="w-full max-w-md bg-[#161922]/90 backdrop-blur-xl p-8 rounded-[32px] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.5)] relative overflow-hidden animate-in fade-in duration-500">
-        
-        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-tr from-[#00D1FF] to-[#E1AAFF] rounded-full blur-[80px] pointer-events-none opacity-30" />
+  const upiPreview = form.username ? `${form.username.toLowerCase().replace(/[^a-z0-9]/g, "")}@shivampay` : "yourname@shivampay";
 
-        <div className="mb-8 text-center relative z-10">
-          <div className="w-16 h-16 bg-gradient-to-tr from-[#00D1FF] via-[#BD88FF] to-[#E1AAFF] rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-[#00D1FF]/20">
-            <Sparkles className="w-8 h-8 text-[#1a0b36]" />
-          </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">Create Account</h1>
-          <p className="text-gray-400 text-sm">Get free UPI Payments & Instant P2P Friend Loan capability</p>
+  return (
+    <div className="auth-wrapper">
+      <div style={{ width: "100%", maxWidth: 420 }}>
+        {/* Logo */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32, justifyContent: "center" }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 12,
+            background: "linear-gradient(135deg, #6366f1, #4f46e5)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#fff", fontWeight: 800, fontSize: 16
+          }}>SP</div>
+          <span style={{ fontSize: 22, fontWeight: 800, color: "#111118", letterSpacing: "-0.02em" }}>ShivamPay</span>
         </div>
 
-        <form onSubmit={handleRegister} className="space-y-4 relative z-10">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-300 uppercase tracking-wider ml-1 flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-[#E1AAFF]" /> Full Name
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Alex Morgan"
-              required
-              value={form.name}
-              onChange={(e) => setFormdata({ ...form, name: e.target.value })}
-              className="w-full px-5 py-3.5 bg-[#1F222E]/80 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#E1AAFF] focus:border-transparent outline-none transition-all text-white placeholder-gray-500 text-sm"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-300 uppercase tracking-wider ml-1 flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-[#00D1FF]" /> Username (Auto UPI ID)
-            </label>
-            <div className="relative flex items-center">
-              <input
-                type="text"
-                placeholder="alex"
-                required
-                value={form.username}
-                onChange={(e) => setFormdata({ ...form, username: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '') })}
-                className="w-full pl-5 pr-32 py-3.5 bg-[#1F222E]/80 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#00D1FF] focus:border-transparent outline-none transition-all text-white placeholder-gray-500 text-sm"
-              />
-              <span className="absolute right-4 text-xs font-mono font-bold text-[#E1AAFF]">@shivampay</span>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-300 uppercase tracking-wider ml-1 flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5 text-[#BD88FF]" /> Email (For Auto EMI Alerts)
-            </label>
-            <input
-              type="email"
-              placeholder="alex@example.com (Optional)"
-              value={form.email}
-              onChange={(e) => setFormdata({ ...form, email: e.target.value })}
-              className="w-full px-5 py-3.5 bg-[#1F222E]/80 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#BD88FF] focus:border-transparent outline-none transition-all text-white placeholder-gray-500 text-sm"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-300 uppercase tracking-wider ml-1 flex items-center gap-1.5">
-              <Lock className="w-3.5 h-3.5 text-pink-400" /> Password
-            </label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              required
-              value={form.password}
-              onChange={(e) => setFormdata({ ...form, password: e.target.value })}
-              className="w-full px-5 py-3.5 bg-[#1F222E]/80 border border-white/10 rounded-2xl focus:ring-2 focus:ring-pink-400 focus:border-transparent outline-none transition-all text-white placeholder-gray-500 text-sm"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-gradient-to-r from-[#00D1FF] via-[#BD88FF] to-[#E1AAFF] hover:opacity-95 text-[#1a0b36] font-extrabold py-4 rounded-2xl transition-all duration-300 mt-4 shadow-xl shadow-cyan-500/20 disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2 text-base"
-          >
-            {isLoading ? (
-              <span className="flex items-center justify-center">
-                <div className="w-5 h-5 border-2 border-[#1a0b36] border-t-transparent rounded-full animate-spin mr-2" />
-                Creating Account...
-              </span>
-            ) : (
-              <>
-                <span>Join ShivamPay Free</span>
-                <ArrowRight className="w-5 h-5 stroke-[2.5]" />
-              </>
-            )}
-          </button>
-
-          {response && (
-            <div className={`p-4 rounded-2xl text-sm text-center font-medium animate-in slide-in-from-top-2 duration-300 ${response.includes("🎉") ? "bg-green-500/10 text-green-400 border border-green-500/30" : "bg-red-500/10 text-red-400 border border-red-500/30"}`}>
-              {response}
-            </div>
-          )}
-
-          <div className="text-center pt-3 border-t border-white/5">
-            <p className="text-sm text-gray-400">
-              Already have an account?{" "}
-              <button 
-                type="button"
-                onClick={() => navigate('/login')}
-                className="text-[#00D1FF] font-bold hover:text-white transition underline-offset-4 hover:underline"
-              >
-                Sign In
-              </button>
+        <div className="auth-card">
+          <div style={{ marginBottom: 28 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#111118", margin: "0 0 6px", letterSpacing: "-0.02em" }}>
+              Create your account
+            </h1>
+            <p style={{ fontSize: 14, color: "#6b6b7b", margin: 0 }}>
+              Get your free UPI ID and ₹10,000 sandbox balance
             </p>
           </div>
-        </form>
-        
-        <div className="mt-6 flex items-center justify-center gap-2 text-[11px] text-gray-500 relative z-10">
-          <ShieldCheck className="w-4 h-4 text-[#E1AAFF]" />
-          <span>Includes free $10,000 Sandbox Balance for instant simulation</span>
+
+          <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              <label className="label">Full Name</label>
+              <input
+                className="input"
+                type="text"
+                placeholder="Alex Morgan"
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="label">Username</label>
+              <input
+                className="input"
+                type="text"
+                placeholder="alex"
+                value={form.username}
+                onChange={e => setForm({ ...form, username: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "") })}
+                required
+              />
+              <div style={{ marginTop: 6, fontSize: 12, color: "#6366f1", fontWeight: 600, fontFamily: "JetBrains Mono, monospace" }}>
+                UPI ID: {upiPreview}
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Email <span style={{ color: "#9898a8", fontWeight: 400, textTransform: "none" }}>(for EMI alerts)</span></label>
+              <input
+                className="input"
+                type="email"
+                placeholder="alex@example.com"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="label">Password</label>
+              <input
+                className="input"
+                type="password"
+                placeholder="••••••••"
+                value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+                required
+              />
+            </div>
+
+            {status.msg && (
+              <div className={`alert alert-${status.type === "error" ? "error" : "success"}`}>
+                {status.msg}
+              </div>
+            )}
+
+            <button type="submit" className="btn btn-primary btn-lg" disabled={loading} style={{ width: "100%" }}>
+              {loading ? "Creating account..." : "Create Account — Free"}
+            </button>
+          </form>
+
+          <div style={{ marginTop: 20, textAlign: "center", fontSize: 14, color: "#6b6b7b" }}>
+            Already have an account?{" "}
+            <button
+              onClick={() => navigate("/login")}
+              style={{ color: "#6366f1", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            >
+              Sign in
+            </button>
+          </div>
         </div>
+
+        <p style={{ textAlign: "center", fontSize: 12, color: "#9898a8", marginTop: 16 }}>
+          🔒 We never store bank details or UPI PINs
+        </p>
       </div>
     </div>
   );
