@@ -100,4 +100,4 @@ A state-of-the-art, high-fidelity fintech and peer-to-peer (P2P) financial platf
 
 ---
 
-Made with ❤️ and high-performance engineering by [Shivam Vishwakarma](https://github.com/shivam-vishwakarmaa) & Antigravity.
+Made by [Shivam Vishwakarma](https://github.com/shivam-vishwakarmaa) 
