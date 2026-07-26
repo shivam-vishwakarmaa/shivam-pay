@@ -3,16 +3,22 @@ const router = express.Router();
 const { z } = require("zod");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User.model");
 const authMiddleware = require("../middlewares/auth.middleware");
+const { authLimiter, pinLimiter } = require("../middlewares/rateLimiter.middleware");
 
-const getSecretKey = () => process.env.JWT_SECRET || "shivampay_super_secret_jwt_key_2026_prod";
+const getSecretKey = () => {
+  if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET environment variable is not set.");
+  return process.env.JWT_SECRET;
+};
 
 const registerSchema = z.object({
   name: z.string().min(1, "Name is required"),
   username: z.string().min(3).max(300),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  email: z.string().email("Please enter a valid email address")
+  email: z.string().email("Please enter a valid email address"),
+  upiPin: z.string().regex(/^\d{4}$/, "Security PIN must be exactly 4 digits")
 });
 
 const loginSchema = z.object({
@@ -20,28 +26,29 @@ const loginSchema = z.object({
   password: z.string().min(3).max(30),
 });
 
-// 1. Standard Registration (Starts with ₹0 balance, 30-Day Long-Lived Session)
-router.post("/register/enter", async (req, res) => {
+// 1. Standard Registration
+router.post("/register/enter", authLimiter, async (req, res) => {
   const result = registerSchema.safeParse(req.body);
   if (!result.success) {
     const errors = result.error.errors.map(e => e.message).join(", ");
     return res.status(400).json({ message: errors || "Please fill all required fields correctly." });
   }
 
-  const { name, username, password, email } = result.data;
+  const { name, username, password, email, upiPin } = result.data;
 
   try {
-    const userEx = await User.findOne({ username });
+    const userEx = await User.findOne({ username: username.toLowerCase().trim() });
     if (userEx) {
       return res.status(400).json({ message: "Username already taken. Try another." });
     }
 
-    const emailEx = await User.findOne({ email });
+    const emailEx = await User.findOne({ email: email.toLowerCase().trim() });
     if (emailEx) {
       return res.status(400).json({ message: "This email is already registered." });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPin = await bcrypt.hash(upiPin, 10);
     
     const user = await User.create({
       name,
@@ -49,11 +56,10 @@ router.post("/register/enter", async (req, res) => {
       email: email.toLowerCase().trim(),
       password: hashedPassword,
       authProvider: "local",
-      upiPin: "1234",
+      upiPin: hashedPin,
       bankbalance: 0
     });
 
-    // Issue 30-Day JWT session token
     const token = jwt.sign({ userId: user._id }, getSecretKey(), { expiresIn: "30d" });
     
     res.status(200).json({
@@ -69,12 +75,13 @@ router.post("/register/enter", async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ message: "Registration error: " + err.message });
+    console.error("Registration server error:", err);
+    res.status(500).json({ message: "An unexpected error occurred during account registration." });
   }
 });
 
-// 2. Standard Login with 30-Day Long-Lived Token
-router.put("/login/enter", async (req, res) => {
+// 2. Standard Login
+router.put("/login/enter", authLimiter, async (req, res) => {
   const result = loginSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ message: "Invalid credentials syntax" });
@@ -100,7 +107,6 @@ router.put("/login/enter", async (req, res) => {
       return res.status(401).json({ message: "Invalid password" });
     }
 
-    // Issue 30-Day persistent session token
     const token = jwt.sign({ userId: user._id }, getSecretKey(), { expiresIn: "30d" });
 
     res.status(200).json({
@@ -116,24 +122,48 @@ router.put("/login/enter", async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ message: "Login failure: " + err.message });
+    console.error("Login server error:", err);
+    res.status(500).json({ message: "An error occurred while signing you in." });
   }
 });
 
-// 3. Production Google OAuth / One-Click Sign-In
-router.post("/auth/google-login", async (req, res) => {
-  const { email, name, avatarUrl, googleId } = req.body;
-  if (!email || !name) {
-    return res.status(400).json({ message: "Invalid Google identity payload." });
+// 3. Real Google OAuth ID Token Verification
+router.post("/auth/google-login", authLimiter, async (req, res) => {
+  const { idToken, upiPin } = req.body;
+  if (!idToken) {
+    return res.status(400).json({ message: "Google ID token is missing." });
+  }
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    return res.status(500).json({ message: "Server configuration error: GOOGLE_CLIENT_ID is not set in environment variables." });
   }
 
   try {
-    const cleanEmail = email.toLowerCase().trim();
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    
+    if (!payload || !payload.email) {
+      return res.status(401).json({ message: "Invalid Google token payload." });
+    }
+
+    const cleanEmail = payload.email.toLowerCase().trim();
+    const name = payload.name || cleanEmail.split("@")[0];
+    const avatarUrl = payload.picture || "";
+    const googleId = payload.sub;
+
     let user = await User.findOne({ email: cleanEmail });
 
-    // If user doesn't exist by email, create them atomically via Google OAuth
     if (!user) {
-      // Generate unique username from email prefix
+      if (!upiPin || !/^\d{4}$/.test(upiPin)) {
+        return res.status(400).json({ 
+          requirePin: true, 
+          message: "New accounts require setting a 4-digit security PIN to proceed." 
+        });
+      }
+
       let baseUsername = cleanEmail.split("@")[0].replace(/[^a-z0-9]/g, "").toLowerCase();
       if (!baseUsername || baseUsername.length < 3) baseUsername = "user" + Math.floor(1000 + Math.random() * 9000);
       let proposedUsername = baseUsername;
@@ -143,26 +173,26 @@ router.post("/auth/google-login", async (req, res) => {
       }
 
       const dummyPassword = await bcrypt.hash(`GOOGLE_AUTH_${Date.now()}_${Math.random()}`, 10);
+      const hashedPin = await bcrypt.hash(upiPin, 10);
+
       user = await User.create({
         name,
         username: proposedUsername,
         email: cleanEmail,
         password: dummyPassword,
         authProvider: "google",
-        googleId: googleId || "google_user",
-        avatarUrl: avatarUrl || "",
-        upiPin: "1234",
+        googleId,
+        avatarUrl,
+        upiPin: hashedPin,
         bankbalance: 0
       });
     } else if (!user.googleId) {
-      // Link existing account with Google Sign-In
       user.authProvider = "google";
-      user.googleId = googleId || "google_user";
+      user.googleId = googleId;
       if (avatarUrl && !user.avatarUrl) user.avatarUrl = avatarUrl;
       await user.save();
     }
 
-    // Issue 30-Day persistent session token
     const token = jwt.sign({ userId: user._id }, getSecretKey(), { expiresIn: "30d" });
 
     res.status(200).json({
@@ -179,26 +209,44 @@ router.post("/auth/google-login", async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ message: "Google Sign-In error: " + err.message });
+    console.error("Google SSO verification failure:", err);
+    res.status(401).json({ message: "Google Sign-In authentication failed." });
   }
 });
 
-// 4. Quick Screen Lock PIN Verification (Fintech Security feature)
-router.post("/auth/verify-pin", authMiddleware, async (req, res) => {
+// 4. Screen Lock PIN Verification
+router.post("/auth/verify-pin", authMiddleware, pinLimiter, async (req, res) => {
   const { pin } = req.body;
+  if (!pin) {
+    return res.status(400).json({ success: false, message: "PIN is required." });
+  }
+
   try {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
-    if (user.upiPin && user.upiPin !== pin) {
+
+    let isMatch = false;
+    if (user.upiPin && user.upiPin.startsWith("$2b$")) {
+      isMatch = await bcrypt.compare(pin, user.upiPin);
+    } else {
+      isMatch = (user.upiPin === pin);
+      if (isMatch) {
+        user.upiPin = await bcrypt.hash(pin, 10);
+        await user.save();
+      }
+    }
+
+    if (!isMatch) {
       return res.status(401).json({ success: false, message: "Incorrect PIN. Please try again." });
     }
     res.json({ success: true, message: "Unlocked successfully" });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("PIN verification error:", err);
+    res.status(500).json({ success: false, message: "Server error occurred during PIN verification." });
   }
 });
 
-// 5. Check Session Validity & Auto-Restore Profile
+// 5. Check Session Validity
 router.get("/auth/verify-session", authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select("-password -upiPin");

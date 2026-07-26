@@ -1,13 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
 const User = require("../models/User.model");
 const Transaction = require("../models/Transaction.model");
 const Notification = require("../models/Notification.model");
 const authMiddleware = require("../middlewares/auth.middleware");
+const { paymentLimiter } = require("../middlewares/rateLimiter.middleware");
 
 // Transfer money to another ShivamPay user (wallet-to-wallet)
-router.post("/payment", authMiddleware, async (req, res) => {
+router.post("/payment", authMiddleware, paymentLimiter, async (req, res) => {
   const { receiverIdentifier, amount, pin, description } = req.body;
   const senderId = req.user.userId;
 
@@ -15,15 +17,23 @@ router.post("/payment", authMiddleware, async (req, res) => {
     return res.status(400).json({ success: false, message: "Please fill in all payment details correctly." });
   }
 
+  if (!pin) {
+    return res.status(400).json({ success: false, message: "Security PIN is required to authorize this transfer." });
+  }
+
   const sender = await User.findById(senderId);
   if (!sender) return res.status(404).json({ success: false, message: "Sender account not found." });
 
-  // Verify PIN
-  if (pin && sender.upiPin && sender.upiPin !== pin) {
-    return res.status(400).json({ success: false, message: "Incorrect PIN. Please try again." });
+  let isMatch = false;
+  if (sender.upiPin && sender.upiPin.startsWith("$2b$")) {
+    isMatch = await bcrypt.compare(pin, sender.upiPin);
+  } else {
+    isMatch = (sender.upiPin === pin);
+  }
+  if (!isMatch) {
+    return res.status(401).json({ success: false, message: "Incorrect security PIN. Transfer aborted." });
   }
 
-  // Find Receiver by Username or MongoDB ID
   let receiver = null;
   if (mongoose.isValidObjectId(receiverIdentifier)) {
     receiver = await User.findById(receiverIdentifier);
@@ -50,10 +60,24 @@ router.post("/payment", authMiddleware, async (req, res) => {
   }
 
   try {
-    sender.bankbalance -= transferAmount;
-    receiver.bankbalance += transferAmount;
-    await sender.save();
-    await receiver.save();
+    const updatedSender = await User.findOneAndUpdate(
+      { _id: sender._id, bankbalance: { $gte: transferAmount } },
+      { $inc: { bankbalance: -transferAmount } },
+      { new: true }
+    );
+
+    if (!updatedSender) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Insufficient balance at transaction execution time. Transfer failed." 
+      });
+    }
+
+    const updatedReceiver = await User.findByIdAndUpdate(
+      receiver._id,
+      { $inc: { bankbalance: transferAmount } },
+      { new: true }
+    );
 
     const refId = `TXN-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
     const txn = await Transaction.create({
@@ -82,10 +106,11 @@ router.post("/payment", authMiddleware, async (req, res) => {
       success: true,
       message: "Payment successful!",
       transaction: txn,
-      newBalance: sender.bankbalance
+      newBalance: updatedSender.bankbalance
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Transaction failed. Please try again." });
+    console.error("Payment Error:", err);
+    res.status(500).json({ success: false, message: "Transaction failed due to a system error. Please try again." });
   }
 });
 
@@ -98,7 +123,8 @@ router.get("/history", authMiddleware, async (req, res) => {
     }).sort({ createdAt: -1 }).limit(100);
     res.json({ success: true, transactions, currentUserId: userId });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("History fetch error:", err);
+    res.status(500).json({ success: false, message: "Could not retrieve transaction history at this time." });
   }
 });
 

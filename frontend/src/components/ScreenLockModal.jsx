@@ -27,7 +27,7 @@ export default function ScreenLockModal({ isLocked, onUnlock, onSignOut }) {
       }
     } catch (err) {
       setLoading(false);
-      setError(err.response?.data?.message || "Incorrect PIN. Default is 1234.");
+      setError(err.response?.data?.message || "Incorrect security PIN. Please try again.");
     }
   };
 

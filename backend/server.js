@@ -1,4 +1,10 @@
 require('dotenv').config();
+
+if (!process.env.JWT_SECRET) {
+    console.error("❌ Fatal Startup Error: JWT_SECRET environment variable is not set. Refusing to start.");
+    process.exit(1);
+}
+
 const express = require("express");
 const cors = require('cors');
 const connectDB = require('./src/config/db');

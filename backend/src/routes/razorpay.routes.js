@@ -5,6 +5,7 @@ const User = require("../models/User.model");
 const Transaction = require("../models/Transaction.model");
 const Notification = require("../models/Notification.model");
 const authMiddleware = require("../middlewares/auth.middleware");
+const { paymentLimiter } = require("../middlewares/rateLimiter.middleware");
 
 // Safely initialize Razorpay (only if keys are configured)
 let razorpay = null;
@@ -30,9 +31,7 @@ if (isRazorpayConfigured) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────
-// GET /razorpay/config — Send public key to frontend (safe)
-// ─────────────────────────────────────────────────────────────────
+// GET /razorpay/config — Send public key to frontend
 router.get("/config", authMiddleware, (req, res) => {
   res.json({
     keyId: isRazorpayConfigured ? RAZORPAY_KEY_ID : null,
@@ -43,11 +42,8 @@ router.get("/config", authMiddleware, (req, res) => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────
 // POST /razorpay/create-order — Create a Razorpay payment order
-// Amount is in INR (paise). ₹100 = 10000 paise.
-// ─────────────────────────────────────────────────────────────────
-router.post("/create-order", authMiddleware, async (req, res) => {
+router.post("/create-order", authMiddleware, paymentLimiter, async (req, res) => {
   if (!isRazorpayConfigured || !razorpay) {
     return res.status(503).json({
       success: false,
@@ -88,27 +84,23 @@ router.post("/create-order", authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error("Razorpay order creation error:", err);
-    res.status(500).json({ success: false, message: "Failed to create payment order: " + err.message });
+    res.status(500).json({ success: false, message: "Failed to initialize payment gateway order." });
   }
 });
 
-// ─────────────────────────────────────────────────────────────────
-// POST /razorpay/verify — Verify payment signature (SECURITY CRITICAL)
-// HMAC-SHA256 signature verification — tamper-proof payment validation
-// ─────────────────────────────────────────────────────────────────
-router.post("/verify", authMiddleware, async (req, res) => {
-  if (!isRazorpayConfigured) {
+// POST /razorpay/verify — Verify payment signature and fetch real amount from Razorpay
+router.post("/verify", authMiddleware, paymentLimiter, async (req, res) => {
+  if (!isRazorpayConfigured || !razorpay) {
     return res.status(503).json({ success: false, message: "Razorpay not configured." });
   }
 
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = req.body;
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
     return res.status(400).json({ success: false, message: "Missing payment verification parameters." });
   }
 
   try {
-    // HMAC-SHA256 Signature Verification — prevents fraudulent credits
     const generatedSignature = crypto
       .createHmac("sha256", RAZORPAY_KEY_SECRET)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -118,27 +110,29 @@ router.post("/verify", authMiddleware, async (req, res) => {
       console.warn(`⚠️ Invalid Razorpay signature attempt by user ${req.user.userId}`);
       return res.status(400).json({
         success: false,
-        message: "Payment verification failed. Invalid signature — possible fraud attempt blocked.",
+        message: "Payment verification failed. Invalid cryptographic signature — possible fraud attempt blocked.",
       });
     }
 
-    // Check for duplicate payment (prevent double-credit)
     const existing = await Transaction.findOne({ referenceId: razorpay_payment_id });
     if (existing) {
-      return res
-        .status(400)
-        .json({ success: false, message: "This payment has already been processed." });
+      return res.status(400).json({ success: false, message: "This payment reference has already been processed." });
     }
 
-    // Credit wallet balance
-    const user = await User.findById(req.user.userId);
-    if (!user) return res.status(404).json({ success: false, message: "User not found." });
+    const paymentData = await razorpay.payments.fetch(razorpay_payment_id);
+    if (!paymentData || (paymentData.status !== "captured" && paymentData.status !== "authorized")) {
+      return res.status(400).json({ success: false, message: "Payment has not been captured or authorized by Razorpay." });
+    }
 
-    const amountInRupees = Number(amount) / 100; // Convert paise back to ₹
-    user.bankbalance += amountInRupees;
-    await user.save();
+    const verifiedAmountRupees = Number(paymentData.amount) / 100;
 
-    // Log immutable transaction record (only safe metadata — no bank details)
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { $inc: { bankbalance: verifiedAmountRupees } },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ success: false, message: "User account not found." });
+
     const refId = razorpay_payment_id;
     await Transaction.create({
       senderId: null,
@@ -146,31 +140,30 @@ router.post("/verify", authMiddleware, async (req, res) => {
       senderUpiId: "razorpay@gateway",
       receiverId: user._id,
       receiverName: user.name || user.username,
-      receiverUpiId: user.upiId || `${user.username}@shivampay`,
-      amount: amountInRupees,
+      receiverUpiId: `${user.username}@shivampay`,
+      amount: verifiedAmountRupees,
       type: "WALLET_TOPUP",
       category: "Wallet Top-Up",
-      description: `Real money top-up via Razorpay. Ref: ${refId}`,
+      description: `Verified top-up via Razorpay Gateway. Ref: ${refId}`,
       status: "SUCCESS",
       referenceId: refId,
     });
 
-    // In-app notification
     await Notification.create({
       userId: user._id,
       title: "✅ Wallet Top-Up Successful!",
-      message: `₹${amountInRupees.toFixed(2)} has been added to your ShivamPay wallet via Razorpay. New balance: ₹${user.bankbalance.toFixed(2)}`,
+      message: `₹${verifiedAmountRupees.toFixed(2)} has been added to your ShivamPay wallet. New balance: ₹${user.bankbalance.toFixed(2)}`,
       type: "GENERAL",
     });
 
     res.json({
       success: true,
-      message: `₹${amountInRupees.toFixed(2)} successfully added to your wallet!`,
+      message: `₹${verifiedAmountRupees.toFixed(2)} successfully added to your wallet!`,
       newBalance: user.bankbalance,
     });
   } catch (err) {
     console.error("Razorpay verification error:", err);
-    res.status(500).json({ success: false, message: "Payment verification error: " + err.message });
+    res.status(500).json({ success: false, message: "Payment verification error occurred on the server." });
   }
 });
 

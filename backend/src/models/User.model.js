@@ -8,7 +8,7 @@ const userSchema = mongoose.Schema({
     authProvider: { type: String, default: "local", enum: ["local", "google"] },
     googleId: { type: String, default: "" },
     avatarUrl: { type: String, default: "" },
-    upiPin: { type: String, default: "1234" }, // 4-digit Security PIN for transactions & quick App Screen Lock
+    upiPin: { type: String, required: true }, // Bcrypt-hashed 4-digit security PIN required during onboarding
     bankbalance: {
         type: Number,
         required: true,

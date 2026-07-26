@@ -6,7 +6,7 @@ import GoogleSignInModal from "../components/GoogleSignInModal";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", username: "", email: "", password: "" });
+  const [form, setForm] = useState({ name: "", username: "", email: "", password: "", upiPin: "" });
   const [status, setStatus] = useState({ type: "", msg: "" });
   const [loading, setLoading] = useState(false);
   const [showGoogle, setShowGoogle] = useState(false);
@@ -14,6 +14,8 @@ export default function RegisterPage() {
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!form.email) { setStatus({ type: "error", msg: "Email is required for notifications and alerts." }); return; }
+    if (!/^\d{4}$/.test(form.upiPin)) { setStatus({ type: "error", msg: "Security PIN must be exactly 4 digits." }); return; }
+
     setLoading(true);
     setStatus({ type: "", msg: "" });
     try {
@@ -45,7 +47,6 @@ export default function RegisterPage() {
           <h1 style={{ fontSize: 20, fontWeight: 800, color: "#1a1a2e", margin: "0 0 4px" }}>Create your account</h1>
           <p style={{ fontSize: 14, color: "#667085", margin: "0 0 20px" }}>Start sending and receiving money instantly</p>
 
-          {/* 1. Production Google One-Click SSO Button */}
           <button
             type="button"
             onClick={() => setShowGoogle(true)}
@@ -79,7 +80,6 @@ export default function RegisterPage() {
             Sign up in 1 second with Google
           </button>
 
-          {/* Divider */}
           <div style={{ display: "flex", alignItems: "center", margin: "16px 0 20px" }}>
             <div style={{ flex: 1, height: 1, background: "#e4e7ec" }} />
             <span style={{ padding: "0 12px", fontSize: 12, color: "#98a2b3", fontWeight: 600, textTransform: "uppercase" }}>or register with email</span>
@@ -103,10 +103,18 @@ export default function RegisterPage() {
                 value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
               <p style={{ fontSize: 11, color: "#98a2b3", marginTop: 4 }}>Used for loan EMI alerts and payment notices</p>
             </div>
-            <div>
-              <label className="label">Password</label>
-              <input className="input" type="password" placeholder="Min 6 characters" required minLength={6}
-                value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label className="label">Password</label>
+                <input className="input" type="password" placeholder="Min 6 chars" required minLength={6}
+                  value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
+              </div>
+              <div>
+                <label className="label">Security PIN (4 digits)</label>
+                <input className="input" type="password" maxLength={4} placeholder="••••" required
+                  style={{ textAlign: "center", fontFamily: "JetBrains Mono, monospace", letterSpacing: 4, fontWeight: 700 }}
+                  value={form.upiPin} onChange={e => setForm({ ...form, upiPin: e.target.value.replace(/\D/g, "") })} />
+              </div>
             </div>
 
             {status.msg && <div className={`alert alert-${status.type === "error" ? "error" : "success"}`}>{status.msg}</div>}

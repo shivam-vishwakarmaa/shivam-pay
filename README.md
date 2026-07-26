@@ -1,100 +1,121 @@
-# ShivamPay
+# ShivamPay 💳
 
-A peer-to-peer fintech platform built with the MERN stack. Real money top-ups via **Razorpay**, instant wallet-to-wallet transfers, and automated P2P friend loans with scheduled EMI deductions.
-
----
-
-## Features
-
-### Real Payments via Razorpay
-- Add real money to your wallet using any UPI app, credit/debit card, or net banking
-- HMAC-SHA256 signature verification prevents tampering
-- Your database never stores card numbers, bank passwords, or UPI PINs — Razorpay handles all sensitive data
-
-### P2P Friend Loans & Automated EMI
-- Lend or borrow from other users with customizable interest rates, duration, and EMI dates
-- Automated cron engine deducts EMI from the borrower's wallet on the scheduled day each month
-- If the borrower has insufficient balance, an email alert is automatically sent
-- Borrowers can settle their full loan at any time with ₹0 closure fees
-
-### Wallet Transfers
-- Send money to any other ShivamPay user instantly
-- PIN-protected transactions
-- Complete transaction history with receipts
+A production-grade, secure peer-to-peer (P2P) fintech platform built with the MERN stack. Features real money wallet top-ups via **Razorpay**, Google OAuth 2.0 authentication, instant wallet-to-wallet transfers, rate-limited endpoints, and automated P2P friend loans with scheduled EMI deductions.
 
 ---
 
-## Tech Stack
+## 🌟 Key Features
 
-**Frontend:** React 19, Vite, Tailwind CSS v4, Razorpay Checkout SDK  
-**Backend:** Node.js, Express, MongoDB (Mongoose), Razorpay SDK, node-cron, Nodemailer, JWT, bcrypt
+### 🔒 Enterprise-Grade Security
+- **Mandatory 4-Digit Security PIN:** Every financial operation (transfers, loan acceptance, early foreclosures) requires authorization with a 4-digit PIN hashed via `bcrypt`.
+- **Real Google OAuth 2.0:** Secure single sign-on with server-side ID Token validation (`google-auth-library`).
+- **Strict Startup Validation:** Application fails fast if essential environment variables (`MONGODB_URI`, `JWT_SECRET`) are missing. No hardcoded fallback secrets or database credentials.
+- **Rate Limiting:** Protects auth endpoints (50 req/15min), transaction endpoints (100 req/15min), and PIN authorization (15 attempts/15min lockout) using `express-rate-limit`.
+- **Zero Sensitive Data Storage:** Card numbers, bank passwords, and UPI PINs are never stored in your database; Razorpay handles all gateway compliance.
+
+### 💳 Real Payments via Razorpay
+- Direct wallet top-ups using UPI, Credit/Debit cards, Net Banking, and Wallet apps.
+- **Cryptographic HMAC-SHA256 Signature Verification** prevents tampering.
+- Server-side verification fetches verified payment amounts directly from Razorpay APIs to eliminate client-side manipulation.
+
+### 🤝 P2P Friend Loans & Automated EMI Engine
+- **Flexible Terms:** Propose loans as a Lender or Borrower with customizable interest rates, durations, and scheduled monthly EMI deduction dates.
+- **Automated Deduction Engine:** Daily scheduled cron engine (`node-cron`) automatically processes EMIs on due dates using atomic wallet transactions.
+- **Early Foreclosure (Zero Fee):** Borrowers can settle their entire remaining loan balance at any time with ₹0 prepay fees.
+- **Email & In-App Alerts:** Automated notification delivery via Nodemailer on loan proposals, disbursements, EMI payments, and low balance warnings.
+
+### ⚡ Atomic Wallet Transfers
+- Instant wallet-to-wallet P2P transfers using username search.
+- Race-condition proof atomic MongoDB operations (`findOneAndUpdate` with balance condition checks).
+- Full transaction history with receipts and reference IDs.
 
 ---
 
-## Setup Guide
+## 🛠️ Tech Stack
 
-### 1. Clone & Install
+- **Frontend:** React 19, Vite, Vanilla CSS Design System (Sleek Light Mode), `@react-oauth/google`, Razorpay Checkout SDK
+- **Backend:** Node.js, Express, MongoDB (Mongoose), Razorpay SDK, `google-auth-library`, `bcrypt`, `express-rate-limit`, `node-cron`, `nodemailer`, `jsonwebtoken`, `zod`
+
+---
+
+## 🚀 Getting Started
+
+### 1. Repository Setup
 
 ```bash
 git clone https://github.com/shivam-vishwakarmaa/shivam-pay.git
 cd shivam-pay
 ```
 
-### 2. Start Backend
+### 2. Backend Configuration & Launch
 
 ```bash
 cd backend
 npm install
-npm start
 ```
 
-Backend runs on `http://localhost:3000`.
+Create a `.env` file inside `backend/`:
 
-### 3. Start Frontend
+```env
+PORT=3000
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/shivampay?retryWrites=true&w=majority
+JWT_SECRET=your_super_secret_jwt_key_here
+GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
+RAZORPAY_KEY_ID=rzp_test_your_key_id
+RAZORPAY_KEY_SECRET=your_key_secret
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_app_password
+NODE_ENV=development
+```
+
+Start backend dev server:
+
+```bash
+npm run dev
+```
+
+### 3. Frontend Configuration & Launch
 
 In a new terminal:
 
 ```bash
 cd frontend
 npm install
+```
+
+Create a `.env` file inside `frontend/`:
+
+```env
+VITE_GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
+```
+
+Start frontend dev server:
+
+```bash
 npm run dev
 ```
 
-Frontend runs on `http://localhost:5173`.
-
-### 4. Enable Real Payments (Required)
-
-1. Create a free Razorpay account at [dashboard.razorpay.com](https://dashboard.razorpay.com)
-2. Go to **Settings → API Keys → Generate Test Key**
-3. Open `backend/.env` and add your keys:
-
-```env
-RAZORPAY_KEY_ID=rzp_test_your_key_here
-RAZORPAY_KEY_SECRET=your_secret_here
-```
-
-4. Restart the backend. The "Add Money" button will now open Razorpay's secure checkout.
+Visit application at `http://localhost:5173`.
 
 ---
 
-## How to Use
+## 📖 How to Use
 
-1. **Create an account** at `http://localhost:5173/register` — enter your name, username, email, and password
-2. **Add money** — click "Add Money" on the dashboard, enter an amount, and pay via Razorpay's secure popup (UPI/card/net banking)
-3. **Send money** — go to "Send Money", enter the recipient's username, amount, and your PIN (default: 1234)
-4. **Create a loan** — go to "Loans & EMI", click "New Loan", fill in the terms, and send the proposal
-5. **Accept a loan** — the recipient logs in, sees the pending loan, and clicks "Accept" with their PIN. Funds transfer instantly
-6. **Settle early** — borrowers can click "Pay Full — ₹0 Fee" to clear the remaining balance at any time
+1. **Sign Up / Login:** Register with an email/username and set a mandatory 4-digit Security PIN, or click **"Continue with Google"** for one-click SSO.
+2. **Add Money:** Click **"Add Money"** on your dashboard summary, enter an amount, and complete payment via Razorpay's secure checkout.
+3. **Send Money:** Navigate to **"Send Money"**, search for any registered username, enter amount & description, and confirm with your 4-digit PIN.
+4. **Initiate P2P Loan:** Go to **"Loans & EMI"**, click **"New Loan"**, set parameters (Lender/Borrower, principal, interest %, duration, EMI day), and submit the proposal.
+5. **Accept & Disburse:** The counterparty receives an instant notification, views terms, and authorizes disbursement with their 4-digit PIN. Funds transfer atomically.
+6. **Automated EMI & Settlement:** EMIs auto-deduct on your chosen day of the month. Borrowers can click **"Pay Full — ₹0 Fee"** to foreclose early at any time.
 
 ---
 
-## Security
+## 🛡️ Security Highlights
 
-- Passwords are hashed with bcrypt (10 salt rounds)
-- JWT token-based authentication
-- Razorpay HMAC-SHA256 signature verification on every payment
-- Sensitive fields (`password`, `upiPin`) are excluded from all API responses
-- `.env` file is gitignored — API keys never enter version control
+- **Bcrypt Password & PIN Hashing:** 10 salt rounds applied to all passwords and security PINs.
+- **Atomic Financial Transactions:** Multi-step balance mutations run atomically to prevent double-spending and race conditions.
+- **Sanitized Server Errors:** Raw exception messages are never exposed to API consumers.
+- **Fail-Fast Environment Shield:** Ensures production builds cannot run with missing keys or unsafe fallbacks.
 
 ---
 

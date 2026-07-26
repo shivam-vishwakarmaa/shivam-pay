@@ -11,7 +11,8 @@ router.get('/my-notifications', authMiddleware, async (req, res) => {
             .limit(50);
         res.json({ success: true, notifications });
     } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        console.error("Fetch notifications error:", err);
+        res.status(500).json({ success: false, message: "Could not retrieve notifications at this time." });
     }
 });
 
@@ -21,7 +22,8 @@ router.put('/mark-read', authMiddleware, async (req, res) => {
         await Notification.updateMany({ userId: req.user.userId, isRead: false }, { isRead: true });
         res.json({ success: true, message: 'All marked as read' });
     } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        console.error("Mark read error:", err);
+        res.status(500).json({ success: false, message: "Could not update notification status." });
     }
 });
 

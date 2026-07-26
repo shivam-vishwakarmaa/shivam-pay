@@ -18,7 +18,6 @@ async function setupTransporter() {
                 auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
             });
         } else {
-            // Ethereal automatically generates free, valid previewable test emails without paid SMTP setups!
             const testAccount = await nodemailer.createTestAccount();
             transporter = nodemailer.createTransport({
                 host: testAccount.smtp.host,
@@ -42,11 +41,11 @@ async function sendInsufficientBalanceEmail(borrower, loan, currentBalance) {
     const subject = `⚠️ URGENT: Automated EMI Deduction Failed (Loan #${loan._id.toString().slice(-6)})`;
     const text = `Dear ${borrower.name || borrower.username},\n\n` +
                  `This is an automated alert from ShivamPay Lending & EMI Engine.\n\n` +
-                 `Your scheduled monthly EMI deduction of $${loan.emiAmount} to lender ${loan.lenderName} failed today because your linked bank account has an insufficient balance ($${currentBalance.toFixed(2)}).\n\n` +
+                 `Your scheduled monthly EMI deduction of ₹${loan.emiAmount} to lender ${loan.lenderName} failed today because your linked account has an insufficient balance (₹${currentBalance.toFixed(2)}).\n\n` +
                  `Loan Details:\n` +
-                 `- Total Remaining Payable: $${loan.remainingAmount.toFixed(2)}\n` +
+                 `- Total Remaining Payable: ₹${loan.remainingAmount.toFixed(2)}\n` +
                  `- Remaining Installments: ${loan.remainingInstallments}\n\n` +
-                 `Please recharge your ShivamPay Bank Account immediately or utilize our zero-fee One-Click Foreclosure option to clear your total dues at once.\n\n` +
+                 `Please recharge your ShivamPay Account immediately or utilize One-Click Foreclosure to clear your dues.\n\n` +
                  `Best regards,\nShivamPay Financial System`;
 
     let previewUrl = "";
@@ -66,7 +65,7 @@ async function sendInsufficientBalanceEmail(borrower, loan, currentBalance) {
                 console.log(`Email dispatched to ${borrower.username}. Preview URL: ${previewUrl}`);
             }
         } else {
-            status = "SENT"; // Fallback logged email simulation
+            status = "SENT";
             console.log(`[SIMULATED EMAIL TO ${borrower.username}] Subject: ${subject}`);
         }
     } catch (err) {
@@ -74,24 +73,27 @@ async function sendInsufficientBalanceEmail(borrower, loan, currentBalance) {
         status = "FAILED";
     }
 
-    // Save notification in database for immediate front-end verification
     await Notification.create({
         userId: borrower._id,
         title: "❌ EMI Deduction Failed (Email Dispatched)",
-        message: `Scheduled EMI deduction of $${loan.emiAmount} failed due to insufficient balance ($${currentBalance.toFixed(2)}). Automated alert sent to your email!`,
+        message: `Scheduled EMI deduction of ₹${loan.emiAmount} failed due to insufficient balance (₹${currentBalance.toFixed(2)}). Automated alert sent to your email!`,
         type: "EMAIL_ALERT",
         emailStatus: status,
         previewUrl: previewUrl
     });
 }
 
-// Core automated EMI engine
+// Core automated EMI engine with Atomic Debits (Item 8) and Due Date Filtering (Item 10)
 async function runEmiDeductionEngine() {
     console.log("Starting Automated EMI Deduction Cron Job...");
     try {
-        // Look for all active or overdue loans
-        const loans = await Loan.find({ status: { $in: ['ACTIVE', 'OVERDUE'] } });
-        console.log(`Found ${loans.length} active/overdue loan(s) to check.`);
+        const now = new Date();
+        // Item 10: Only process a loan when the current date matches (or has passed) that loan's nextDueDate
+        const loans = await Loan.find({ 
+            status: { $in: ['ACTIVE', 'OVERDUE'] },
+            nextDueDate: { $lte: now }
+        });
+        console.log(`Found ${loans.length} due active/overdue loan(s) to process.`);
 
         const results = [];
 
@@ -106,15 +108,20 @@ async function runEmiDeductionEngine() {
             const emiAmount = Number(loan.emiAmount);
             const refId = `EMI-${Date.now()}-${Math.floor(Math.random()*10000)}`;
 
-            // Check sufficient balance
-            if (borrower.bankbalance >= emiAmount) {
-                // Perform atomic transfer
-                borrower.bankbalance -= emiAmount;
-                lender.bankbalance += emiAmount;
-                await borrower.save();
-                await lender.save();
+            // Item 8: Atomic EMI debit via findOneAndUpdate with balance filter
+            const updatedBorrower = await User.findOneAndUpdate(
+                { _id: loan.borrowerId, bankbalance: { $gte: emiAmount } },
+                { $inc: { bankbalance: -emiAmount } },
+                { new: true }
+            );
 
-                // Update loan state
+            if (updatedBorrower) {
+                const updatedLender = await User.findByIdAndUpdate(
+                    loan.lenderId,
+                    { $inc: { bankbalance: emiAmount } },
+                    { new: true }
+                );
+
                 loan.remainingInstallments -= 1;
                 loan.remainingAmount = Math.max(0, loan.remainingAmount - emiAmount);
 
@@ -122,21 +129,19 @@ async function runEmiDeductionEngine() {
                     loan.status = 'COMPLETED';
                 } else {
                     loan.status = 'ACTIVE';
-                    // Schedule next month's due date
-                    const nextDate = new Date(loan.nextDueDate);
+                    const nextDate = new Date(loan.nextDueDate || now);
                     nextDate.setMonth(nextDate.getMonth() + 1);
                     loan.nextDueDate = nextDate;
                 }
                 await loan.save();
 
-                // Record transaction & notification
                 await Transaction.create({
                     senderId: borrower._id,
                     senderName: borrower.name || borrower.username,
-                    senderUpiId: borrower.upiId || 'N/A',
+                    senderUpiId: borrower.username,
                     receiverId: lender._id,
                     receiverName: lender.name || lender.username,
-                    receiverUpiId: lender.upiId || 'N/A',
+                    receiverUpiId: lender.username,
                     amount: emiAmount,
                     type: 'EMI_DEDUCTION',
                     category: 'Loan EMI',
@@ -148,41 +153,40 @@ async function runEmiDeductionEngine() {
                 await Notification.create({
                     userId: borrower._id,
                     title: "✅ Automated EMI Paid",
-                    message: `$${emiAmount} deducted successfully for your loan with ${lender.name}. Remaining installments: ${loan.remainingInstallments}`,
+                    message: `₹${emiAmount} deducted successfully for your loan with ${lender.name}. Remaining installments: ${loan.remainingInstallments}`,
                     type: "EMI_DEDUCTION"
                 });
 
                 await Notification.create({
                     userId: lender._id,
                     title: "💵 EMI Received",
-                    message: `Received $${emiAmount} as automated EMI from ${borrower.name}.`,
+                    message: `Received ₹${emiAmount} as automated EMI from ${borrower.name}.`,
                     type: "EMI_DEDUCTION"
                 });
 
-                results.push({ loanId: loan._id, status: 'SUCCESS', message: `Deducted $${emiAmount} successfully from ${borrower.username}.` });
+                results.push({ loanId: loan._id, status: 'SUCCESS', message: `Deducted ₹${emiAmount} successfully from ${borrower.username}.` });
             } else {
-                // Insufficient Balance -> Mark OVERDUE and send automated Email alert!
                 loan.status = 'OVERDUE';
                 await loan.save();
 
                 await Transaction.create({
                     senderId: borrower._id,
                     senderName: borrower.name || borrower.username,
-                    senderUpiId: borrower.upiId || 'N/A',
+                    senderUpiId: borrower.username,
                     receiverId: lender._id,
                     receiverName: lender.name || lender.username,
-                    receiverUpiId: lender.upiId || 'N/A',
+                    receiverUpiId: lender.username,
                     amount: emiAmount,
                     type: 'EMI_DEDUCTION',
                     category: 'Loan EMI',
-                    description: `Failed automated EMI deduction due to insufficient balance ($${borrower.bankbalance})`,
+                    description: `Failed automated EMI deduction due to insufficient balance (₹${borrower.bankbalance})`,
                     status: 'FAILED',
                     referenceId: refId
                 });
 
                 await sendInsufficientBalanceEmail(borrower, loan, borrower.bankbalance);
 
-                results.push({ loanId: loan._id, status: 'FAILED_EMAIL_SENT', message: `Insufficient balance for ${borrower.username} ($${borrower.bankbalance} < $${emiAmount}). Alert email sent.` });
+                results.push({ loanId: loan._id, status: 'FAILED_EMAIL_SENT', message: `Insufficient balance for ${borrower.username}. Alert email sent.` });
             }
         }
 
@@ -190,12 +194,11 @@ async function runEmiDeductionEngine() {
         return { success: true, results };
     } catch (err) {
         console.error("Error running EMI Deduction Engine:", err);
-        return { success: false, error: err.message };
+        return { success: false, error: "EMI engine processing failed." };
     }
 }
 
 function initEmiCron() {
-    // Schedule cron to run daily at midnight (00:00)
     cron.schedule('0 0 * * *', () => {
         runEmiDeductionEngine();
     });
