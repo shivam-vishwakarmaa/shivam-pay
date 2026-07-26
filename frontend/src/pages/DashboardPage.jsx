@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import confetti from "canvas-confetti";
-
-const API = "http://localhost:3000/pytm";
+import { API } from "../config/api";
+import ScreenLockModal from "../components/ScreenLockModal";
 
 const Icon = ({ d, size = 18, stroke = "currentColor", fill = "none", sw = "1.8" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
@@ -18,14 +18,13 @@ const ic = {
   history: ["M3 3h18v4H3z","M3 10h18v4H3z","M3 17h18v4H3z"],
   bell: ["M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9","M13.73 21a2 2 0 0 1-3.46 0"],
   logout: ["M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4","M16 17l5-5-5-5","M21 12H9"],
-  wallet: ["M21 12V7H5a2 2 0 0 1 0-4h14v4","M3 5v14a2 2 0 0 0 2 2h16v-5","M18 12a2 2 0 0 0 0 4h4v-4z"],
+  lock: ["M19 11H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2z", "M7 11V7a5 5 0 0 1 10 0v4"],
   plus: "M12 5v14M5 12h14",
   check: "M20 6L9 17l-5-5",
   x: "M18 6L6 18M6 6l12 12",
   up: "M12 19V5M5 12l7-7 7 7",
   down: "M12 5v14M5 12l7 7 7-7",
   search: ["M21 21l-4.35-4.35","M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0"],
-  zap: "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
 };
 
 export default function DashboardPage() {
@@ -41,6 +40,7 @@ export default function DashboardPage() {
   const [notifications, setNotifs] = useState([]);
   const [rzpCfg, setRzpCfg] = useState({ isConfigured: false, keyId: null });
   const [loading, setLoading] = useState(true);
+  const [isLocked, setIsLocked] = useState(false);
 
   const [modal, setModal] = useState(null);
   const [modalData, setModalData] = useState(null);
@@ -48,7 +48,7 @@ export default function DashboardPage() {
   const [loanForm, setLoan] = useState({ partnerUsername: "", role: "LENDER", principalAmount: "", interestRate: "5", durationMonths: "6", deductionDayOfMonth: "5", remarks: "" });
   const [topupAmt, setTopup] = useState("");
   const [pinInput, setPin] = useState("");
-  const [txnState, setTxn] = useState({ s: "idle", m: "" }); // s: idle|loading|ok|err
+  const [txnState, setTxn] = useState({ s: "idle", m: "" });
   const [searchQ, setSearch] = useState("");
 
   const fire = () => confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 }, colors: ["#3b5bdb","#2f9e44","#e67700"] });
@@ -64,7 +64,15 @@ export default function DashboardPage() {
         axios.get(`${API}/notifications/my-notifications`, auth),
         axios.get(`${API}/razorpay/config`, auth),
       ]);
-      if (b.status === "fulfilled") setUser(b.value.data);
+      if (b.status === "fulfilled") {
+        setUser(b.value.data);
+        localStorage.setItem("user", JSON.stringify(b.value.data));
+      } else if (b.status === "rejected" && b.reason?.response?.status === 401) {
+        // Only if actual token expiry happens, boot to login
+        localStorage.clear();
+        navigate("/login");
+        return;
+      }
       if (u.status === "fulfilled") setUsers((u.value.data || []).filter(x => x.username !== b.value?.data?.username));
       if (t.status === "fulfilled") setTxns(t.value.data.transactions || []);
       if (l.status === "fulfilled") setLoans(l.value.data.loans || []);
@@ -72,7 +80,7 @@ export default function DashboardPage() {
       if (r.status === "fulfilled") setRzpCfg(r.value.data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [token]);
+  }, [token, navigate]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
@@ -83,7 +91,7 @@ export default function DashboardPage() {
   // ── Handlers ──
   const handleSend = async (e) => {
     e.preventDefault();
-    setTxn({ s: "loading", m: "Processing..." });
+    setTxn({ s: "loading", m: "Processing transfer..." });
     try {
       await axios.post(`${API}/trasiction/payment`, sendForm, auth);
       setTxn({ s: "ok", m: `${fmt(sendForm.amount)} sent successfully!` });
@@ -94,7 +102,7 @@ export default function DashboardPage() {
 
   const handleLoan = async (e) => {
     e.preventDefault();
-    setTxn({ s: "loading", m: "Submitting..." });
+    setTxn({ s: "loading", m: "Submitting proposal..." });
     try {
       await axios.post(`${API}/loans/propose`, loanForm, auth);
       setTxn({ s: "ok", m: "Loan proposal sent!" });
@@ -106,7 +114,7 @@ export default function DashboardPage() {
     setTxn({ s: "loading", m: "Disbursing funds..." });
     try {
       await axios.post(`${API}/loans/accept/${modalData._id}`, { pin: pinInput }, auth);
-      setTxn({ s: "ok", m: "Loan active! Funds transferred." });
+      setTxn({ s: "ok", m: "Loan active! Funds transferred to your wallet." });
       fire(); loadAll(); setTimeout(close, 1500);
     } catch (err) { setTxn({ s: "err", m: err.response?.data?.message || "Failed." }); }
   };
@@ -123,16 +131,16 @@ export default function DashboardPage() {
   const handleTopup = async () => {
     const amount = Number(topupAmt);
     if (!amount || amount < 1) { setTxn({ s: "err", m: "Please enter a valid amount (minimum ₹1)." }); return; }
-    if (!rzpCfg.isConfigured) { setTxn({ s: "err", m: "Payment service is currently being set up. Please try again later." }); return; }
-    setTxn({ s: "loading", m: "Preparing secure checkout..." });
+    if (!rzpCfg.isConfigured) { setTxn({ s: "err", m: "Payment gateway keys are currently being verified in .env. Try again soon." }); return; }
+    setTxn({ s: "loading", m: "Preparing secure Razorpay checkout..." });
     try {
       const r = await axios.post(`${API}/razorpay/create-order`, { amount }, auth);
       const { orderId, amount: amt, currency } = r.data;
       const options = {
-        key: rzpCfg.keyId, amount: amt, currency, name: "ShivamPay", description: "Add Money",
+        key: rzpCfg.keyId, amount: amt, currency, name: "ShivamPay", description: "Add Real Money to Wallet",
         order_id: orderId,
         handler: async (res) => {
-          setTxn({ s: "loading", m: "Verifying payment..." });
+          setTxn({ s: "loading", m: "Verifying payment signature..." });
           try {
             const v = await axios.post(`${API}/razorpay/verify`, { razorpay_order_id: res.razorpay_order_id, razorpay_payment_id: res.razorpay_payment_id, razorpay_signature: res.razorpay_signature, amount: amt }, auth);
             setTxn({ s: "ok", m: v.data.message });
@@ -161,13 +169,12 @@ export default function DashboardPage() {
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", gap: 10 }}>
       <div style={{ width: 32, height: 32, borderRadius: 8, background: "#3b5bdb", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13 }}>SP</div>
-      <p style={{ color: "#667085", fontSize: 14 }}>Loading...</p>
+      <p style={{ color: "#667085", fontSize: 14 }}>Loading your secure wallet...</p>
     </div>
   );
 
   const StatusBar = () => txnState.s !== "idle" ? (
     <div className={`alert alert-${txnState.s === "err" ? "error" : txnState.s === "ok" ? "success" : "info"}`} style={{ marginTop: 12 }}>
-      {txnState.s === "loading" && <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid currentColor", borderTopColor: "transparent", animation: "spin 0.7s linear infinite", flexShrink: 0 }} />}
       {txnState.m}
     </div>
   ) : null;
@@ -182,6 +189,12 @@ export default function DashboardPage() {
 
   return (
     <>
+      <ScreenLockModal
+        isLocked={isLocked}
+        onUnlock={() => setIsLocked(false)}
+        onSignOut={() => { localStorage.clear(); navigate("/login"); }}
+      />
+
       <div className="app-shell">
         {/* Sidebar */}
         <aside className="sidebar">
@@ -191,7 +204,10 @@ export default function DashboardPage() {
           </div>
 
           <div style={{ margin: "12px 10px 8px", background: "#f8f9fb", borderRadius: 10, padding: "10px 12px", border: "1px solid #eaecf0" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a2e" }}>{user.name || user.username}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a2e", display: "flex", alignItems: "center", gap: 6 }}>
+              {user.name || user.username}
+              {user.authProvider === "google" && <span title="Verified by Google" style={{ fontSize: 11, background: "#e8f0fe", color: "#1a73e8", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>Google SSO</span>}
+            </div>
             <div style={{ fontSize: 11, color: "#98a2b3" }}>@{user.username}</div>
             <div style={{ fontSize: 16, fontWeight: 800, color: "#3b5bdb", marginTop: 6 }}>{fmt(user.bankbalance)}</div>
           </div>
@@ -206,7 +222,11 @@ export default function DashboardPage() {
             ))}
           </nav>
 
-          <div style={{ padding: "10px", borderTop: "1px solid #eaecf0" }}>
+          <div style={{ padding: "10px", borderTop: "1px solid #eaecf0", display: "flex", flexDirection: "column", gap: 4 }}>
+            {/* Fintech Screen Lock - Prevents repeated logins! */}
+            <div className="nav-item" onClick={() => setIsLocked(true)} style={{ color: "#3b5bdb" }}>
+              <Icon d={ic.lock} size={16} /><span>Lock Wallet 🔒</span>
+            </div>
             <div className="nav-item" onClick={() => { localStorage.clear(); navigate("/login"); }} style={{ color: "#e03131" }}>
               <Icon d={ic.logout} size={16} /><span>Sign Out</span>
             </div>
@@ -219,7 +239,12 @@ export default function DashboardPage() {
             <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#1a1a2e", flex: 1 }}>
               {navItems.find(n => n.id === tab)?.label || "Home"}
             </h2>
-            <button className="btn btn-ghost btn-sm" onClick={loadAll}><Icon d="M23 4v6h-6 M1 20v-6h6 M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" size={14} /></button>
+            <button className="btn btn-ghost btn-sm" title="Lock Wallet" onClick={() => setIsLocked(true)}>
+              <Icon d={ic.lock} size={15} />
+            </button>
+            <button className="btn btn-ghost btn-sm" title="Refresh Data" onClick={loadAll}>
+              <Icon d="M23 4v6h-6 M1 20v-6h6 M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" size={14} />
+            </button>
             <button className="btn btn-ghost btn-sm" style={{ position: "relative" }} onClick={() => setTab("NOTIFS")}>
               <Icon d={ic.bell} size={15} />
               {unreadN > 0 && <span style={{ position: "absolute", top: 4, right: 5, width: 7, height: 7, background: "#e03131", borderRadius: "50%", border: "2px solid #fff" }} />}
@@ -232,13 +257,11 @@ export default function DashboardPage() {
             {tab === "HOME" && (
               <div style={{ maxWidth: 850, margin: "0 auto" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 14, marginBottom: 20 }}>
-                  {/* Balance card */}
                   <div className="stat-card" style={{ background: "#3b5bdb", border: "none" }}>
                     <div className="stat-label" style={{ color: "rgba(255,255,255,0.7)" }}>Available Balance</div>
                     <div className="stat-value" style={{ color: "#fff", fontSize: 30 }}>{fmt(user.bankbalance)}</div>
                     <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>@{user.username}</div>
                   </div>
-                  {/* Add money */}
                   <div className="stat-card" style={{ cursor: "pointer", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 6 }}
                     onClick={() => { setTopup(""); open("topup"); }}>
                     <div style={{ width: 36, height: 36, borderRadius: 10, background: "#eff4ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -259,7 +282,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a2e" }}>Send Money</div>
-                      <div style={{ fontSize: 11, color: "#98a2b3" }}>Transfer to any user</div>
+                      <div style={{ fontSize: 11, color: "#98a2b3" }}>Transfer to any user instantly</div>
                     </div>
                   </div>
                   <div className="card" style={{ cursor: "pointer", padding: 16, display: "flex", alignItems: "center", gap: 14 }}
