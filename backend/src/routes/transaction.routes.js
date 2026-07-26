@@ -6,34 +6,34 @@ const Transaction = require("../models/Transaction.model");
 const Notification = require("../models/Notification.model");
 const authMiddleware = require("../middlewares/auth.middleware");
 
-// Transfer money via UPI ID, Username, or User ID with PIN Verification
+// Transfer money to another ShivamPay user (wallet-to-wallet)
 router.post("/payment", authMiddleware, async (req, res) => {
-  const { receiverIdentifier, amount, pin, category, description } = req.body;
+  const { receiverIdentifier, amount, pin, description } = req.body;
   const senderId = req.user.userId;
 
   if (!senderId || !receiverIdentifier || isNaN(amount) || amount <= 0) {
-    return res.status(400).json({ success: false, message: "Invalid payment details or negative amount" });
+    return res.status(400).json({ success: false, message: "Please fill in all payment details correctly." });
   }
 
   const sender = await User.findById(senderId);
-  if (!sender) return res.status(404).json({ success: false, message: "Sender account not found" });
+  if (!sender) return res.status(404).json({ success: false, message: "Sender account not found." });
 
   // Verify PIN
   if (pin && sender.upiPin && sender.upiPin !== pin) {
-    return res.status(400).json({ success: false, message: "Incorrect UPI PIN. Transaction failed." });
+    return res.status(400).json({ success: false, message: "Incorrect PIN. Please try again." });
   }
 
-  // Find Receiver by UPI ID, Username, or MongoDB ID
+  // Find Receiver by Username or MongoDB ID
   let receiver = null;
   if (mongoose.isValidObjectId(receiverIdentifier)) {
     receiver = await User.findById(receiverIdentifier);
   }
   if (!receiver) {
-    receiver = await User.findOne({ $or: [{ upiId: receiverIdentifier }, { username: receiverIdentifier }] });
+    receiver = await User.findOne({ username: receiverIdentifier });
   }
 
   if (!receiver) {
-    return res.status(404).json({ success: false, message: `Receiver "${receiverIdentifier}" not found on ShivamPay.` });
+    return res.status(404).json({ success: false, message: `User "${receiverIdentifier}" not found on ShivamPay.` });
   }
 
   if (receiver._id.toString() === senderId) {
@@ -45,106 +45,51 @@ router.post("/payment", authMiddleware, async (req, res) => {
   if (sender.bankbalance < transferAmount) {
     return res.status(400).json({ 
       success: false, 
-      message: `Insufficient bank balance ($${sender.bankbalance.toFixed(2)}) for transfer of $${transferAmount.toFixed(2)}` 
+      message: `Insufficient balance. Your balance is ₹${sender.bankbalance.toFixed(2)} but you're trying to send ₹${transferAmount.toFixed(2)}. Please add money first.` 
     });
   }
 
-  // Execute transfer
   try {
     sender.bankbalance -= transferAmount;
     receiver.bankbalance += transferAmount;
     await sender.save();
     await receiver.save();
 
-    const refId = `UPI-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const refId = `TXN-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
     const txn = await Transaction.create({
       senderId: sender._id,
       senderName: sender.name || sender.username,
-      senderUpiId: sender.upiId || `${sender.username}@shivampay`,
+      senderUpiId: sender.username,
       receiverId: receiver._id,
       receiverName: receiver.name || receiver.username,
-      receiverUpiId: receiver.upiId || `${receiver.username}@shivampay`,
+      receiverUpiId: receiver.username,
       amount: transferAmount,
-      type: 'UPI_SEND',
-      category: category || 'Peer Transfer',
-      description: description || `Instant UPI transfer to ${receiver.name || receiver.username}`,
+      type: 'TRANSFER',
+      category: 'Peer Transfer',
+      description: description || `Transfer to ${receiver.name || receiver.username}`,
       status: 'SUCCESS',
       referenceId: refId
     });
 
-    // Notify Receiver
     await Notification.create({
       userId: receiver._id,
-      title: "💵 Money Received via UPI!",
-      message: `You received $${transferAmount.toFixed(2)} from ${sender.name || sender.username} (${sender.upiId || 'UPI'}). Ref: ${refId}`,
-      type: "UPI_RECEIPT"
+      title: "Money Received!",
+      message: `₹${transferAmount.toFixed(2)} received from ${sender.name || sender.username}. Ref: ${refId}`,
+      type: "GENERAL"
     });
 
     res.json({
       success: true,
-      message: "UPI Payment successful!",
+      message: "Payment successful!",
       transaction: txn,
       newBalance: sender.bankbalance
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Transaction processing error: " + err.message });
+    res.status(500).json({ success: false, message: "Transaction failed. Please try again." });
   }
 });
 
-// Bill Payments Service (Electricity, DTH, Mobile Recharge, Water)
-router.post("/bills/pay", authMiddleware, async (req, res) => {
-  const { billerName, category, amount, pin, consumerNumber } = req.body;
-  const senderId = req.user.userId;
-
-  if (!billerName || isNaN(amount) || amount <= 0) {
-    return res.status(400).json({ success: false, message: "Invalid bill payment parameters" });
-  }
-
-  const sender = await User.findById(senderId);
-  if (!sender) return res.status(404).json({ success: false, message: "User account not found" });
-
-  if (pin && sender.upiPin && sender.upiPin !== pin) {
-    return res.status(400).json({ success: false, message: "Incorrect UPI PIN. Bill payment failed." });
-  }
-
-  const billAmount = Number(amount);
-  if (sender.bankbalance < billAmount) {
-    return res.status(400).json({ success: false, message: `Insufficient bank balance ($${sender.bankbalance}) to pay ${billerName} bill.` });
-  }
-
-  try {
-    sender.bankbalance -= billAmount;
-    await sender.save();
-
-    const refId = `BILL-${Date.now()}-${Math.floor(1000 + Math.random()*9000)}`;
-    const txn = await Transaction.create({
-      senderId: sender._id,
-      senderName: sender.name || sender.username,
-      senderUpiId: sender.upiId || 'N/A',
-      receiverName: `${billerName} (${consumerNumber || 'Bill'})`,
-      receiverUpiId: `${category.toLowerCase()}@billpay`,
-      amount: billAmount,
-      type: 'BILL_PAY',
-      category: category || 'Bill Payment',
-      description: `Bill payment for ${billerName} - ${consumerNumber || ''}`,
-      status: 'SUCCESS',
-      referenceId: refId
-    });
-
-    await Notification.create({
-      userId: sender._id,
-      title: "🧾 Bill Payment Successful",
-      message: `Paid $${billAmount.toFixed(2)} to ${billerName}. Ref: ${refId}`,
-      type: "GENERAL"
-    });
-
-    res.json({ success: true, message: `Successfully paid ${billerName} bill of $${billAmount.toFixed(2)}!`, transaction: txn, newBalance: sender.bankbalance });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// Get comprehensive user transaction log
+// Get transaction history
 router.get("/history", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;

@@ -7,12 +7,11 @@ const User = require("../models/User.model");
 
 const SECRET_KEY = process.env.JWT_SECRET || "yshivam";
 
-// Validation Schemas
 const registerSchema = z.object({
-  name: z.string(),
+  name: z.string().min(1, "Name is required"),
   username: z.string().min(3).max(300),
-  password: z.string().min(3).max(30),
-  email: z.string().optional()
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  email: z.string().email("Please enter a valid email address")
 });
 
 const loginSchema = z.object({
@@ -20,11 +19,12 @@ const loginSchema = z.object({
   password: z.string().min(3).max(30),
 });
 
-// Register with default UPI credentials
+// Register — new users start with ₹0 balance
 router.post("/register/enter", async (req, res) => {
   const result = registerSchema.safeParse(req.body);
   if (!result.success) {
-    return res.status(400).json({ message: "Invalid registration values. Please verify." });
+    const errors = result.error.errors.map(e => e.message).join(", ");
+    return res.status(400).json({ message: errors || "Please fill all required fields correctly." });
   }
 
   const { name, username, password, email } = result.data;
@@ -35,32 +35,32 @@ router.post("/register/enter", async (req, res) => {
       return res.status(400).json({ message: "Username already taken. Try another." });
     }
 
+    const emailEx = await User.findOne({ email });
+    if (emailEx) {
+      return res.status(400).json({ message: "This email is already registered." });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    const defaultUpiId = `${username.toLowerCase()}@shivampay`;
     
     const user = await User.create({
       name,
       username,
-      email: email || `${username}@shivampay.tech`,
+      email,
       password: hashedPassword,
-      upiId: defaultUpiId,
       upiPin: "1234",
-      linkedBank: "HDFC Bank - **** 8824",
-      bankbalance: 10000
+      bankbalance: 0
     });
 
     const token = jwt.sign({ userId: user._id }, SECRET_KEY);
     
     res.status(200).json({
-      message: "Account created successfully with default UPI ID!",
+      message: "Account created successfully!",
       token,
       user: {
         _id: user._id,
         name: user.name,
         username: user.username,
         email: user.email,
-        upiId: user.upiId,
-        linkedBank: user.linkedBank,
         bankbalance: user.bankbalance
       }
     });
@@ -69,11 +69,11 @@ router.post("/register/enter", async (req, res) => {
   }
 });
 
-// Login with automatic backward-compatible UPI ID initialization
+// Login
 router.put("/login/enter", async (req, res) => {
   const result = loginSchema.safeParse(req.body);
   if (!result.success) {
-    return res.status(400).json({ message: "Invalid credentials syntax" });
+    return res.status(400).json({ message: "Invalid credentials" });
   }
 
   const { username, password } = result.data;
@@ -89,40 +89,16 @@ router.put("/login/enter", async (req, res) => {
       return res.status(401).json({ message: "Invalid password" });
     }
 
-    // Auto-migrate legacy accounts with new UPI ID and fields
-    let modified = false;
-    if (!user.upiId) {
-      user.upiId = `${user.username.toLowerCase()}@shivampay`;
-      modified = true;
-    }
-    if (!user.upiPin) {
-      user.upiPin = "1234";
-      modified = true;
-    }
-    if (!user.linkedBank) {
-      user.linkedBank = "HDFC Bank - **** 8824";
-      modified = true;
-    }
-    if (!user.email) {
-      user.email = `${user.username}@shivampay.tech`;
-      modified = true;
-    }
-    if (modified) {
-      await user.save();
-    }
-
     const token = jwt.sign({ userId: user._id }, SECRET_KEY);
 
     res.status(200).json({
-      message: "Welcome back to ShivamPay!",
+      message: "Welcome back!",
       token: token,
       user: {
         _id: user._id,
         name: user.name,
         username: user.username,
         email: user.email,
-        upiId: user.upiId,
-        linkedBank: user.linkedBank,
         bankbalance: user.bankbalance
       }
     });

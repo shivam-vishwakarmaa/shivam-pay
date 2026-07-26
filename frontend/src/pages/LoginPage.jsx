@@ -26,76 +26,42 @@ export default function LoginPage() {
 
   return (
     <div className="auth-wrapper">
-      <div style={{ width: "100%", maxWidth: 420 }}>
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32, justifyContent: "center" }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: 12,
-            background: "linear-gradient(135deg, #6366f1, #4f46e5)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#fff", fontWeight: 800, fontSize: 16
-          }}>SP</div>
-          <span style={{ fontSize: 22, fontWeight: 800, color: "#111118", letterSpacing: "-0.02em" }}>ShivamPay</span>
+      <div style={{ width: "100%", maxWidth: 400 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28, justifyContent: "center" }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#3b5bdb", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 14 }}>SP</div>
+          <span style={{ fontSize: 20, fontWeight: 800, color: "#1a1a2e" }}>ShivamPay</span>
         </div>
 
         <div className="auth-card">
-          <div style={{ marginBottom: 28 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#111118", margin: "0 0 6px", letterSpacing: "-0.02em" }}>
-              Welcome back
-            </h1>
-            <p style={{ fontSize: 14, color: "#6b6b7b", margin: 0 }}>Sign in to your ShivamPay account</p>
-          </div>
+          <h1 style={{ fontSize: 20, fontWeight: 800, color: "#1a1a2e", margin: "0 0 4px" }}>Welcome back</h1>
+          <p style={{ fontSize: 14, color: "#667085", margin: "0 0 24px" }}>Sign in to your account</p>
 
-          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div>
               <label className="label">Username</label>
-              <input
-                className="input"
-                type="text"
-                placeholder="Enter your username"
-                value={form.username}
-                onChange={e => setForm({ ...form, username: e.target.value })}
-                required
-              />
+              <input className="input" type="text" placeholder="Enter your username" required
+                value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} />
             </div>
-
             <div>
               <label className="label">Password</label>
-              <input
-                className="input"
-                type="password"
-                placeholder="••••••••"
-                value={form.password}
-                onChange={e => setForm({ ...form, password: e.target.value })}
-                required
-              />
+              <input className="input" type="password" placeholder="••••••••" required
+                value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
             </div>
 
-            {status.msg && (
-              <div className={`alert alert-${status.type === "error" ? "error" : "success"}`}>
-                {status.msg}
-              </div>
-            )}
+            {status.msg && <div className={`alert alert-${status.type === "error" ? "error" : "success"}`}>{status.msg}</div>}
 
             <button type="submit" className="btn btn-primary btn-lg" disabled={loading} style={{ width: "100%" }}>
               {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
 
-          <div style={{ marginTop: 20, textAlign: "center", fontSize: 14, color: "#6b6b7b" }}>
+          <div style={{ marginTop: 18, textAlign: "center", fontSize: 14, color: "#667085" }}>
             Don't have an account?{" "}
-            <button
-              onClick={() => navigate("/register")}
-              style={{ color: "#6366f1", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: 0 }}
-            >
+            <button onClick={() => navigate("/register")} style={{ color: "#3b5bdb", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
               Create account
             </button>
           </div>
         </div>
-
-        <p style={{ textAlign: "center", fontSize: 12, color: "#9898a8", marginTop: 16 }}>
-          🔒 256-bit encrypted · Bank-grade security
-        </p>
       </div>
     </div>
   );
