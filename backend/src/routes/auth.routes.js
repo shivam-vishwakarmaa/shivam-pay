@@ -133,15 +133,17 @@ router.post("/auth/google-login", authLimiter, async (req, res) => {
   if (!idToken) {
     return res.status(400).json({ message: "Google ID token is missing." });
   }
-  if (!process.env.GOOGLE_CLIENT_ID) {
+
+  const googleClientId = (process.env.GOOGLE_CLIENT_ID || "").trim().replace(/^["']|["']$/g, '');
+  if (!googleClientId) {
     return res.status(500).json({ message: "Server configuration error: GOOGLE_CLIENT_ID is not set in environment variables." });
   }
 
   try {
-    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    const client = new OAuth2Client(googleClientId);
     const ticket = await client.verifyIdToken({
       idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
+      audience: googleClientId,
     });
     const payload = ticket.getPayload();
     
@@ -210,7 +212,7 @@ router.post("/auth/google-login", authLimiter, async (req, res) => {
     });
   } catch (err) {
     console.error("Google SSO verification failure:", err);
-    res.status(401).json({ message: "Google Sign-In authentication failed." });
+    res.status(401).json({ message: "Google Sign-In authentication failed: " + err.message });
   }
 });
 
