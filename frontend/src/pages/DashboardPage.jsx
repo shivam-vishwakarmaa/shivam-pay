@@ -9,6 +9,7 @@ import SendMoneyForm from "../components/dashboard/SendMoneyForm";
 import LoansSection from "../components/dashboard/LoansSection";
 import HistorySection from "../components/dashboard/HistorySection";
 import NotificationsSection from "../components/dashboard/NotificationsSection";
+import SettingsSection from "../components/dashboard/SettingsSection";
 import DashboardModals from "../components/dashboard/DashboardModals";
 
 const Icon = ({ d, size = 18, stroke = "currentColor", fill = "none", sw = "1.8" }) => (
@@ -23,6 +24,7 @@ const ic = {
   loan: ["M12 2v20","M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"],
   history: ["M3 3h18v4H3z","M3 10h18v4H3z","M3 17h18v4H3z"],
   bell: ["M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9","M13.73 21a2 2 0 0 1-3.46 0"],
+  settings: ["M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z", "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"],
   logout: ["M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4","M16 17l5-5-5-5","M21 12H9"],
   lock: ["M19 11H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2z", "M7 11V7a5 5 0 0 1 10 0v4"],
   plus: "M12 5v14M5 12h14",
@@ -57,12 +59,11 @@ export default function DashboardPage() {
   const [txnState, setTxn] = useState({ s: "idle", m: "" });
   const [searchQ, setSearch] = useState("");
 
-  const fire = () => confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 }, colors: ["#3b5bdb","#2f9e44","#e67700"] });
+  const fire = () => confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 }, colors: ["#171717","#0070f3","#50e3c2"] });
 
   const loadAll = useCallback(async () => {
     if (!token) { navigate("/login"); return; }
     try {
-      // Items 11 & 13: Renamed to /allusers and /transaction
       const [b, u, t, l, n, r] = await Promise.allSettled([
         axios.get(`${API}/balance`, auth),
         axios.get(`${API}/allusers`, auth),
@@ -96,11 +97,10 @@ export default function DashboardPage() {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    setTxn({ s: "loading", m: "Processing transfer..." });
+    setTxn({ s: "loading", m: "Processing secure transfer..." });
     try {
-      // Item 11: Route renamed to /transaction/payment
       await axios.post(`${API}/transaction/payment`, sendForm, auth);
-      setTxn({ s: "ok", m: `${fmt(sendForm.amount)} sent successfully!` });
+      setTxn({ s: "ok", m: `${fmt(sendForm.amount)} transferred successfully!` });
       fire(); loadAll();
       setTimeout(() => { close(); setSend({ receiverIdentifier: "", amount: "", pin: "", description: "" }); }, 1500);
     } catch (err) { setTxn({ s: "err", m: err.response?.data?.message || "Transfer failed." }); }
@@ -108,45 +108,45 @@ export default function DashboardPage() {
 
   const handleLoan = async (e) => {
     e.preventDefault();
-    setTxn({ s: "loading", m: "Submitting proposal..." });
+    setTxn({ s: "loading", m: "Submitting credit proposal..." });
     try {
       await axios.post(`${API}/loans/propose`, loanForm, auth);
-      setTxn({ s: "ok", m: "Loan proposal sent!" });
+      setTxn({ s: "ok", m: "Loan proposal sent successfully!" });
       loadAll(); setTimeout(close, 1200);
-    } catch (err) { setTxn({ s: "err", m: err.response?.data?.message || "Failed." }); }
+    } catch (err) { setTxn({ s: "err", m: err.response?.data?.message || "Failed to submit loan." }); }
   };
 
   const handleAccept = async () => {
-    setTxn({ s: "loading", m: "Disbursing funds..." });
+    setTxn({ s: "loading", m: "Disbursing credit funds to wallet..." });
     try {
       await axios.post(`${API}/loans/accept/${modalData._id}`, { pin: pinInput }, auth);
-      setTxn({ s: "ok", m: "Loan active! Funds transferred to your wallet." });
+      setTxn({ s: "ok", m: "Loan activated! Funds deposited to your account." });
       fire(); loadAll(); setTimeout(close, 1500);
-    } catch (err) { setTxn({ s: "err", m: err.response?.data?.message || "Failed." }); }
+    } catch (err) { setTxn({ s: "err", m: err.response?.data?.message || "PIN verification or loan acceptance failed." }); }
   };
 
   const handleForeclose = async () => {
-    setTxn({ s: "loading", m: "Settling loan..." });
+    setTxn({ s: "loading", m: "Settling outstanding loan..." });
     try {
       await axios.post(`${API}/loans/foreclose/${modalData._id}`, { pin: pinInput }, auth);
-      setTxn({ s: "ok", m: "Loan settled — ₹0 closure fee!" });
+      setTxn({ s: "ok", m: "Loan closed cleanly — ₹0 closure fee!" });
       fire(); loadAll(); setTimeout(close, 1500);
-    } catch (err) { setTxn({ s: "err", m: err.response?.data?.message || "Failed." }); }
+    } catch (err) { setTxn({ s: "err", m: err.response?.data?.message || "Failed to foreclose loan." }); }
   };
 
   const handleTopup = async () => {
     const amount = Number(topupAmt);
-    if (!amount || amount < 1) { setTxn({ s: "err", m: "Please enter a valid amount (minimum ₹1)." }); return; }
+    if (!amount || amount < 1) { setTxn({ s: "err", m: "Please enter a valid deposit amount (minimum ₹1)." }); return; }
     if (!rzpCfg.isConfigured) { setTxn({ s: "err", m: "Payment gateway keys are currently being verified in .env. Try again soon." }); return; }
     setTxn({ s: "loading", m: "Preparing secure Razorpay checkout..." });
     try {
       const r = await axios.post(`${API}/razorpay/create-order`, { amount }, auth);
       const { orderId, amount: amt, currency } = r.data;
       const options = {
-        key: rzpCfg.keyId, amount: amt, currency, name: "ShivamPay", description: "Add Real Money to Wallet",
+        key: rzpCfg.keyId, amount: amt, currency, name: "ShivamPay Wallet", description: "Deposit Real Money to Account",
         order_id: orderId,
         handler: async (res) => {
-          setTxn({ s: "loading", m: "Verifying payment signature..." });
+          setTxn({ s: "loading", m: "Verifying encrypted payment signature..." });
           try {
             const v = await axios.post(`${API}/razorpay/verify`, { razorpay_order_id: res.razorpay_order_id, razorpay_payment_id: res.razorpay_payment_id, razorpay_signature: res.razorpay_signature, amount: amt }, auth);
             setTxn({ s: "ok", m: v.data.message });
@@ -154,13 +154,13 @@ export default function DashboardPage() {
           } catch (err) { setTxn({ s: "err", m: err.response?.data?.message || "Verification failed." }); }
         },
         prefill: { name: user.name, email: user.email },
-        theme: { color: "#3b5bdb" },
+        theme: { color: "#171717" }, // Vercel monochrome checkout
         modal: { ondismiss: () => setTxn({ s: "idle", m: "" }) },
       };
       const rzp = new window.Razorpay(options);
       rzp.open();
       setTxn({ s: "idle", m: "" });
-    } catch (err) { setTxn({ s: "err", m: err.response?.data?.message || "Could not start checkout." }); }
+    } catch (err) { setTxn({ s: "err", m: err.response?.data?.message || "Could not initialize Razorpay checkout." }); }
   };
 
   const unreadN = notifications.filter(n => !n.isRead).length;
@@ -172,15 +172,15 @@ export default function DashboardPage() {
   };
 
   if (loading) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", gap: 10 }}>
-      <div style={{ width: 32, height: 32, borderRadius: 8, background: "#3b5bdb", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13 }}>SP</div>
-      <p style={{ color: "#667085", fontSize: 14 }}>Loading your secure wallet...</p>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", gap: 12, background: "#fafafa", fontFamily: "'Inter', -apple-system, sans-serif" }}>
+      <div style={{ width: 36, height: 36, borderRadius: 10, background: "#171717", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 15 }}>SP</div>
+      <p style={{ color: "#667085", fontSize: 14, fontWeight: 500 }}>Connecting to secure ledger...</p>
     </div>
   );
 
   const StatusBar = () => txnState.s !== "idle" ? (
-    <div className={`alert alert-${txnState.s === "err" ? "error" : txnState.s === "ok" ? "success" : "info"}`} style={{ marginTop: 12 }}>
-      {txnState.m}
+    <div className={`alert alert-${txnState.s === "err" ? "error" : txnState.s === "ok" ? "success" : "info"}`} style={{ marginTop: 14 }}>
+      <div style={{ flex: 1 }}>{txnState.m}</div>
     </div>
   ) : null;
 
@@ -190,6 +190,7 @@ export default function DashboardPage() {
     { id: "LOANS", label: "Loans & EMI", icon: "loan", badge: activeLoans.length || null },
     { id: "HISTORY", label: "History", icon: "history" },
     { id: "NOTIFS", label: "Notifications", icon: "bell", badge: unreadN || null },
+    { id: "SETTINGS", label: "Settings", icon: "settings" },
   ];
 
   return (
@@ -200,55 +201,65 @@ export default function DashboardPage() {
         onSignOut={() => { localStorage.clear(); navigate("/login"); }}
       />
 
-      <div className="app-shell">
+      <div className="app-shell" style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
+        {/* Desktop Sidebar */}
         <aside className="sidebar">
-          <div style={{ padding: "16px 14px", display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid #eaecf0" }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: "#3b5bdb", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 12, flexShrink: 0 }}>SP</div>
-            <span style={{ fontSize: 15, fontWeight: 800, color: "#1a1a2e" }}>ShivamPay</span>
+          <div style={{ padding: "18px 18px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid #ebebeb" }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: "#171717", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13, flexShrink: 0, boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>SP</div>
+            <span style={{ fontSize: 17, fontWeight: 800, color: "#171717", letterSpacing: -0.4 }}>ShivamPay</span>
           </div>
 
-          <div style={{ margin: "12px 10px 8px", background: "#f8f9fb", borderRadius: 10, padding: "10px 12px", border: "1px solid #eaecf0" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a2e", display: "flex", alignItems: "center", gap: 6 }}>
+          {/* User Profile Mini Badge */}
+          <div style={{ margin: "14px 12px 10px", background: "#ffffff", borderRadius: 12, padding: "12px 14px", border: "1px solid #ebebeb", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: "#171717", display: "flex", alignItems: "center", gap: 6 }}>
               {user.name || user.username}
-              {user.authProvider === "google" && <span title="Verified by Google" style={{ fontSize: 11, background: "#e8f0fe", color: "#1a73e8", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>Google SSO</span>}
+              {user.authProvider === "google" && <span title="Verified by Google" style={{ fontSize: 10.5, background: "#d3e5ff", color: "#0761d1", padding: "1.5px 6px", borderRadius: 9999, fontWeight: 700 }}>SSO</span>}
             </div>
-            <div style={{ fontSize: 11, color: "#98a2b3" }}>@{user.username}</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "#3b5bdb", marginTop: 6 }}>{fmt(user.bankbalance)}</div>
+            <div style={{ fontSize: 11.5, color: "#888888", fontFamily: "'JetBrains Mono', monospace", marginTop: 2 }}>@{user.username}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#171717", marginTop: 8, fontFamily: "'JetBrains Mono', monospace" }}>{fmt(user.bankbalance)}</div>
           </div>
 
-          <nav style={{ flex: 1, padding: "6px 0" }}>
+          <nav style={{ flex: 1, padding: "8px 0" }}>
             {navItems.map(n => (
               <div key={n.id} className={`nav-item ${tab === n.id ? "active" : ""}`} onClick={() => setTab(n.id)}>
-                <Icon d={ic[n.icon]} size={16} />
+                <Icon d={ic[n.icon]} size={17} />
                 <span style={{ flex: 1 }}>{n.label}</span>
-                {n.badge ? <span style={{ background: tab === n.id ? "#3b5bdb" : "#eaecf0", color: tab === n.id ? "#fff" : "#667085", borderRadius: 20, padding: "1px 7px", fontSize: 11, fontWeight: 700 }}>{n.badge}</span> : null}
+                {n.badge ? <span style={{ background: tab === n.id ? "#000000" : "#f5f5f5", color: tab === n.id ? "#ffffff" : "#4d4d4d", borderRadius: 9999, padding: "1px 8px", fontSize: 11, fontWeight: 700 }}>{n.badge}</span> : null}
               </div>
             ))}
           </nav>
 
-          <div style={{ padding: "10px", borderTop: "1px solid #eaecf0", display: "flex", flexDirection: "column", gap: 4 }}>
-            <div className="nav-item" onClick={() => setIsLocked(true)} style={{ color: "#3b5bdb" }}>
+          <div style={{ padding: "12px", borderTop: "1px solid #ebebeb", display: "flex", flexDirection: "column", gap: 4 }}>
+            <div className="nav-item" onClick={() => setIsLocked(true)} style={{ color: "#171717", fontWeight: 600 }}>
               <Icon d={ic.lock} size={16} /><span>Lock Wallet 🔒</span>
             </div>
-            <div className="nav-item" onClick={() => { localStorage.clear(); navigate("/login"); }} style={{ color: "#e03131" }}>
+            <div className="nav-item" onClick={() => { localStorage.clear(); navigate("/login"); }} style={{ color: "#ee0000", fontWeight: 600 }}>
               <Icon d={ic.logout} size={16} /><span>Sign Out</span>
             </div>
           </div>
         </aside>
+
+        {/* Main Workspace */}
         <div className="main-area">
           <header className="top-bar">
-            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#1a1a2e", flex: 1 }}>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#171717", flex: 1, letterSpacing: "-0.3px" }}>
               {navItems.find(n => n.id === tab)?.label || "Home"}
             </h2>
-            <button className="btn btn-ghost btn-sm" title="Lock Wallet" onClick={() => setIsLocked(true)}>
+            
+            {/* Mobile Balance Quick Display */}
+            <div className="md:hidden" style={{ display: "flex", alignItems: "center", background: "#f5f5f5", padding: "4px 10px", borderRadius: 9999, fontSize: 13, fontWeight: 700, color: "#171717", fontFamily: "'JetBrains Mono', monospace", marginRight: 6 }}>
+              {fmt(user.bankbalance)}
+            </div>
+
+            <button className="btn btn-outline btn-sm" style={{ padding: "7px 10px", borderRadius: 10 }} title="Lock Wallet" onClick={() => setIsLocked(true)}>
               <Icon d={ic.lock} size={15} />
             </button>
-            <button className="btn btn-ghost btn-sm" title="Refresh Data" onClick={loadAll}>
+            <button className="btn btn-outline btn-sm" style={{ padding: "7px 10px", borderRadius: 10 }} title="Refresh Data" onClick={loadAll}>
               <Icon d="M23 4v6h-6 M1 20v-6h6 M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" size={14} />
             </button>
-            <button className="btn btn-ghost btn-sm" style={{ position: "relative" }} onClick={() => setTab("NOTIFS")}>
+            <button className="btn btn-outline btn-sm" style={{ padding: "7px 10px", borderRadius: 10, position: "relative" }} onClick={() => setTab("NOTIFS")}>
               <Icon d={ic.bell} size={15} />
-              {unreadN > 0 && <span style={{ position: "absolute", top: 4, right: 5, width: 7, height: 7, background: "#e03131", borderRadius: "50%", border: "2px solid #fff" }} />}
+              {unreadN > 0 && <span style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, background: "#ee0000", borderRadius: "50%", border: "2px solid #fff" }} />}
             </button>
           </header>
 
@@ -258,7 +269,26 @@ export default function DashboardPage() {
             {tab === "LOANS" && <LoansSection loans={loans} user={user} open={open} fmt={fmt} Icon={Icon} ic={ic} />}
             {tab === "HISTORY" && <HistorySection transactions={transactions} user={user} open={open} fmt={fmt} />}
             {tab === "NOTIFS" && <NotificationsSection notifications={notifications} unreadN={unreadN} auth={auth} loadAll={loadAll} Icon={Icon} ic={ic} />}
+            {tab === "SETTINGS" && <SettingsSection user={user} auth={auth} loadAll={loadAll} />}
           </main>
+
+          {/* Mobile Bottom Navigation Bar (<768px) */}
+          <nav className="mobile-bottom-nav">
+            {navItems.map(n => (
+              <button
+                key={n.id}
+                type="button"
+                className={`mobile-nav-btn ${tab === n.id ? "active" : ""}`}
+                onClick={() => setTab(n.id)}
+              >
+                <div style={{ position: "relative" }}>
+                  <Icon d={ic[n.icon]} size={20} />
+                  {n.badge ? <span style={{ position: "absolute", top: -4, right: -8, background: "#ee0000", color: "#fff", borderRadius: "50%", width: 15, height: 15, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{n.badge}</span> : null}
+                </div>
+                <span>{n.id === "NOTIFS" ? "Alerts" : n.id === "LOANS" ? "Loans" : n.label.split(" ")[0]}</span>
+              </button>
+            ))}
+          </nav>
         </div>
       </div>
 

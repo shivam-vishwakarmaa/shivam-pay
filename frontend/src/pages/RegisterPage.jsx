@@ -13,7 +13,7 @@ export default function RegisterPage() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (!form.email) { setStatus({ type: "error", msg: "Email is required for notifications and alerts." }); return; }
+    if (!form.email) { setStatus({ type: "error", msg: "Email is required for loan alerts and PIN/password recovery." }); return; }
     if (!/^\d{4}$/.test(form.upiPin)) { setStatus({ type: "error", msg: "Security PIN must be exactly 4 digits." }); return; }
 
     setLoading(true);
@@ -22,8 +22,8 @@ export default function RegisterPage() {
       const res = await axios.post(`${API}/register/enter`, form);
       localStorage.setItem("token", res.data.token);
       if (res.data.user) localStorage.setItem("user", JSON.stringify(res.data.user));
-      setStatus({ type: "success", msg: "Account created! Redirecting to dashboard..." });
-      setTimeout(() => navigate("/dashboard"), 800);
+      setStatus({ type: "success", msg: "Account created! Initializing digital ledger..." });
+      setTimeout(() => navigate("/dashboard"), 700);
     } catch (err) {
       setLoading(false);
       setStatus({ type: "error", msg: err.response?.data?.message || "Registration failed." });
@@ -31,22 +31,24 @@ export default function RegisterPage() {
   };
 
   const handleGoogleSuccess = (user) => {
-    setStatus({ type: "success", msg: `Welcome, ${user.name}! Opening your dashboard...` });
+    setStatus({ type: "success", msg: `Welcome, ${user.name}! Opening your wallet...` });
     setTimeout(() => navigate("/dashboard"), 500);
   };
 
   return (
-    <div className="auth-wrapper">
-      <div style={{ width: "100%", maxWidth: 400 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28, justifyContent: "center" }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#3b5bdb", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 14 }}>SP</div>
-          <span style={{ fontSize: 20, fontWeight: 800, color: "#1a1a2e" }}>ShivamPay</span>
+    <div className="auth-wrapper" style={{ background: "#fafafa", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px 16px", fontFamily: "'Inter', -apple-system, sans-serif" }}>
+      <div style={{ width: "100%", maxWidth: 430 }}>
+        {/* Brand Header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28, justifyContent: "center" }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: "#171717", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 16, letterSpacing: -0.5, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>SP</div>
+          <span style={{ fontSize: 22, fontWeight: 800, color: "#171717", letterSpacing: -0.6 }}>ShivamPay</span>
         </div>
 
-        <div className="auth-card">
-          <h1 style={{ fontSize: 20, fontWeight: 800, color: "#1a1a2e", margin: "0 0 4px" }}>Create your account</h1>
-          <p style={{ fontSize: 14, color: "#667085", margin: "0 0 20px" }}>Start sending and receiving money instantly</p>
+        <div className="auth-card" style={{ background: "#ffffff", border: "1px solid #ebebeb", borderRadius: 16, padding: "32px", boxShadow: "0 10px 40px rgba(0,0,0,0.05)" }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#171717", margin: "0 0 6px", letterSpacing: -0.5 }}>Create your digital account</h1>
+          <p style={{ fontSize: 13.5, color: "#667085", margin: "0 0 22px" }}>Instant peer-to-peer payments & smart EMI credit</p>
 
+          {/* Google SSO Button */}
           <button
             type="button"
             onClick={() => setShowGoogle(true)}
@@ -57,19 +59,19 @@ export default function RegisterPage() {
               justifyContent: "center",
               gap: 12,
               padding: "11px 16px",
-              background: "#fff",
-              border: "1px solid #ced4da",
-              borderRadius: 10,
+              background: "#ffffff",
+              border: "1px solid #d0d5dd",
+              borderRadius: 9999,
               fontSize: 14,
               fontWeight: 600,
-              color: "#344054",
+              color: "#171717",
               cursor: "pointer",
               boxShadow: "0 1px 2px rgba(16, 24, 40, 0.05)",
-              transition: "all 0.2s",
+              transition: "all 0.15s",
               marginBottom: 18
             }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8f9fb"}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#fff"}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#fafafa"; e.currentTarget.style.borderColor = "#171717"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#ffffff"; e.currentTarget.style.borderColor = "#d0d5dd"; }}
           >
             <svg width="18" height="18" viewBox="0 0 48 48">
               <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -80,53 +82,67 @@ export default function RegisterPage() {
             Sign up in 1 second with Google
           </button>
 
+          {/* Divider */}
           <div style={{ display: "flex", alignItems: "center", margin: "16px 0 20px" }}>
-            <div style={{ flex: 1, height: 1, background: "#e4e7ec" }} />
-            <span style={{ padding: "0 12px", fontSize: 12, color: "#98a2b3", fontWeight: 600, textTransform: "uppercase" }}>or register with email</span>
-            <div style={{ flex: 1, height: 1, background: "#e4e7ec" }} />
+            <div style={{ flex: 1, height: 1, background: "#ebebeb" }} />
+            <span style={{ padding: "0 12px", fontSize: 11, color: "#888888", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>or register with email</span>
+            <div style={{ flex: 1, height: 1, background: "#ebebeb" }} />
           </div>
 
           <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div>
-              <label className="label">Full Name</label>
+              <label className="label" style={{ fontSize: 13, fontWeight: 600, color: "#171717", display: "block", marginBottom: 5 }}>Full Name</label>
               <input className="input" type="text" placeholder="Your full name" required
-                value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+                style={{ width: "100%", padding: "9px 13px", background: "#ffffff", border: "1.5px solid #ebebeb", borderRadius: 10, fontSize: 14, outline: "none" }}
+                value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+                onFocus={e => e.target.style.borderColor = "#171717"} onBlur={e => e.target.style.borderColor = "#ebebeb"} />
             </div>
             <div>
-              <label className="label">Username</label>
-              <input className="input" type="text" placeholder="Choose a username" required
-                value={form.username} onChange={e => setForm({ ...form, username: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "") })} />
+              <label className="label" style={{ fontSize: 13, fontWeight: 600, color: "#171717", display: "block", marginBottom: 5 }}>Username</label>
+              <input className="input" type="text" placeholder="Choose a unique username" required
+                style={{ width: "100%", padding: "9px 13px", background: "#ffffff", border: "1.5px solid #ebebeb", borderRadius: 10, fontSize: 14, outline: "none" }}
+                value={form.username} onChange={e => setForm({ ...form, username: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "") })}
+                onFocus={e => e.target.style.borderColor = "#171717"} onBlur={e => e.target.style.borderColor = "#ebebeb"} />
             </div>
             <div>
-              <label className="label">Email</label>
+              <label className="label" style={{ fontSize: 13, fontWeight: 600, color: "#171717", display: "block", marginBottom: 5 }}>Email Address</label>
               <input className="input" type="email" placeholder="you@example.com" required
-                value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
-              <p style={{ fontSize: 11, color: "#98a2b3", marginTop: 4 }}>Used for loan EMI alerts and payment notices</p>
+                style={{ width: "100%", padding: "9px 13px", background: "#ffffff", border: "1.5px solid #ebebeb", borderRadius: 10, fontSize: 14, outline: "none" }}
+                value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
+                onFocus={e => e.target.style.borderColor = "#171717"} onBlur={e => e.target.style.borderColor = "#ebebeb"} />
+              <p style={{ fontSize: 11.5, color: "#888888", margin: "4px 0 0" }}>Used for security OTP verification and EMI receipt notices</p>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div>
-                <label className="label">Password</label>
+                <label className="label" style={{ fontSize: 13, fontWeight: 600, color: "#171717", display: "block", marginBottom: 5 }}>Password</label>
                 <input className="input" type="password" placeholder="Min 6 chars" required minLength={6}
-                  value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
+                  style={{ width: "100%", padding: "9px 13px", background: "#ffffff", border: "1.5px solid #ebebeb", borderRadius: 10, fontSize: 14, outline: "none" }}
+                  value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
+                  onFocus={e => e.target.style.borderColor = "#171717"} onBlur={e => e.target.style.borderColor = "#ebebeb"} />
               </div>
               <div>
-                <label className="label">Security PIN (4 digits)</label>
+                <label className="label" style={{ fontSize: 13, fontWeight: 600, color: "#171717", display: "block", marginBottom: 5 }}>Security PIN</label>
                 <input className="input" type="password" maxLength={4} placeholder="••••" required
-                  style={{ textAlign: "center", fontFamily: "JetBrains Mono, monospace", letterSpacing: 4, fontWeight: 700 }}
-                  value={form.upiPin} onChange={e => setForm({ ...form, upiPin: e.target.value.replace(/\D/g, "") })} />
+                  style={{ width: "100%", padding: "9px 13px", background: "#ffffff", border: "1.5px solid #ebebeb", borderRadius: 10, fontSize: 16, outline: "none", textAlign: "center", fontFamily: "JetBrains Mono, monospace", letterSpacing: 4, fontWeight: 700 }}
+                  value={form.upiPin} onChange={e => setForm({ ...form, upiPin: e.target.value.replace(/\D/g, "") })}
+                  onFocus={e => e.target.style.borderColor = "#171717"} onBlur={e => e.target.style.borderColor = "#ebebeb"} />
               </div>
             </div>
 
-            {status.msg && <div className={`alert alert-${status.type === "error" ? "error" : "success"}`}>{status.msg}</div>}
+            {status.msg && (
+              <div style={{ padding: "10px 14px", borderRadius: 10, fontSize: 13, background: status.type === "error" ? "#fff5f5" : "#ebfbee", color: status.type === "error" ? "#c92a2a" : "#2b8a3e", border: `1px solid ${status.type === "error" ? "#ffc9c9" : "#b2f2bb"}` }}>
+                {status.msg}
+              </div>
+            )}
 
-            <button type="submit" className="btn btn-primary btn-lg" disabled={loading} style={{ width: "100%" }}>
-              {loading ? "Creating account..." : "Create Account"}
+            <button type="submit" disabled={loading} style={{ width: "100%", padding: "12px 18px", background: "#171717", color: "#ffffff", borderRadius: 9999, fontSize: 14, fontWeight: 600, border: "none", cursor: "pointer", transition: "background 0.15s", marginTop: 4 }}>
+              {loading ? "Creating account..." : "Create Account →"}
             </button>
           </form>
 
-          <div style={{ marginTop: 20, textAlign: "center", fontSize: 14, color: "#667085", borderTop: "1px solid #f2f4f7", paddingTop: 16 }}>
+          <div style={{ marginTop: 20, textAlign: "center", fontSize: 13.5, color: "#667085", borderTop: "1px solid #ebebeb", paddingTop: 16 }}>
             Already have an account?{" "}
-            <button onClick={() => navigate("/login")} style={{ color: "#3b5bdb", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+            <button onClick={() => navigate("/login")} style={{ color: "#171717", fontWeight: 700, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>
               Sign in
             </button>
           </div>

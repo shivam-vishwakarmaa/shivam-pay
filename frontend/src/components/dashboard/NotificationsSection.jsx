@@ -13,29 +13,41 @@ export default function NotificationsSection({ notifications, unreadN, auth, loa
   };
 
   return (
-    <div style={{ maxWidth: 650, margin: "0 auto" }}>
-      {unreadN > 0 && (
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
-          <button className="btn btn-ghost btn-sm" onClick={markRead}>Mark all read</button>
+    <div style={{ maxWidth: 700, margin: "0 auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <h3 style={{ fontSize: 18, fontWeight: 700, color: "#171717", margin: "0 0 2px", letterSpacing: "-0.3px" }}>Security & Ledger Alerts</h3>
+          <p style={{ margin: 0, fontSize: 13.5, color: "#667085" }}>Important notifications regarding payments, loan disbursements, and system security</p>
         </div>
-      )}
+        {unreadN > 0 && (
+          <button className="btn btn-outline btn-sm" style={{ borderRadius: 9999, fontWeight: 600 }} onClick={markRead}>
+            Mark all read ({unreadN}) ✓
+          </button>
+        )}
+      </div>
+
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         {notifications.length === 0 ? (
-          <div style={{ padding: "50px 20px", textAlign: "center", color: "#98a2b3" }}>
-            <Icon d={ic.bell} size={30} stroke="#d0d5dd" />
-            <p style={{ marginTop: 10 }}>No notifications yet.</p>
+          <div style={{ padding: "60px 20px", textAlign: "center", color: "#888888" }}>
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: "#fafafa", border: "1px solid #ebebeb", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+              <Icon d={ic.bell} size={22} stroke="#171717" />
+            </div>
+            <h4 style={{ margin: "0 0 4px", fontSize: 15, color: "#171717", fontWeight: 600 }}>No notifications yet</h4>
+            <p style={{ margin: 0, fontSize: 13 }}>We will alert you instantly when funds arrive or an EMI falls due.</p>
           </div>
         ) : notifications.map((n, i) => (
-          <div key={n._id} style={{ padding: "14px 18px", borderBottom: i < notifications.length - 1 ? "1px solid #f2f4f7" : "none", display: "flex", gap: 12, background: !n.isRead ? "#fafbff" : "#fff" }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: "#eff4ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Icon d={ic.bell} size={14} stroke="#3b5bdb" />
+          <div key={n._id} style={{ padding: "16px 20px", borderBottom: i < notifications.length - 1 ? "1px solid #ebebeb" : "none", display: "flex", gap: 14, background: !n.isRead ? "#fafafa" : "#ffffff", transition: "background 0.15s" }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: !n.isRead ? "#171717" : "#fafafa", border: !n.isRead ? "none" : "1px solid #ebebeb", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: !n.isRead ? "#ffffff" : "#171717" }}>
+              <Icon d={ic.bell} size={16} stroke={!n.isRead ? "#ffffff" : "#171717"} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 3 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a2e" }}>{n.title}</div>
-                <div style={{ fontSize: 11, color: "#98a2b3", whiteSpace: "nowrap" }}>{new Date(n.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#171717" }}>
+                  {n.title} {!n.isRead && <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "#ee0000", marginLeft: 6 }} />}
+                </div>
+                <div style={{ fontSize: 11.5, color: "#888888", whiteSpace: "nowrap" }}>{new Date(n.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</div>
               </div>
-              <div style={{ fontSize: 13, color: "#667085", lineHeight: 1.5 }}>{n.message}</div>
+              <div style={{ fontSize: 13.5, color: "#475467", lineHeight: 1.5 }}>{n.message}</div>
             </div>
           </div>
         ))}

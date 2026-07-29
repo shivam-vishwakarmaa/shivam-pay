@@ -12,31 +12,36 @@ export default function DashboardModals({
       {modal === "topup" && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && close()}>
           <div className="modal">
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 18 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Add Money</h3>
-              <button className="btn btn-ghost btn-sm" onClick={close}><Icon d={ic.x} size={16} /></button>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#171717", letterSpacing: "-0.3px" }}>Add Money to Wallet</h3>
+              <button className="btn btn-ghost btn-sm" onClick={close} style={{ padding: 6, color: "#888888" }}><Icon d={ic.x} size={18} /></button>
             </div>
             {!rzpCfg.isConfigured ? (
               <div>
-                <div className="alert alert-info" style={{ marginBottom: 14 }}>Payment service is currently being set up. Please check back soon.</div>
-                <button className="btn btn-outline" style={{ width: "100%" }} onClick={close}>OK</button>
+                <div className="alert alert-info" style={{ marginBottom: 16 }}>Payment gateway keys are currently initializing in environment variables. Please check back shortly.</div>
+                <button className="btn btn-outline" style={{ width: "100%", borderRadius: 9999 }} onClick={close}>Close & Return</button>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <div>
-                  <label className="label">Amount (₹)</label>
+                  <label className="label">Deposit Amount (₹)</label>
                   <input className="input" type="number" min="1" placeholder="Enter amount"
-                    style={{ fontSize: 22, fontWeight: 800, fontFamily: "JetBrains Mono, monospace" }}
+                    autoFocus
+                    style={{ fontSize: 24, fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", padding: "12px 16px" }}
                     value={topupAmt} onChange={e => setTopup(e.target.value)} />
-                  <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                    {[500, 1000, 2000, 5000].map(a => <button key={a} className="btn btn-outline btn-sm" onClick={() => setTopup(String(a))}>₹{a.toLocaleString()}</button>)}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 10 }}>
+                    {[500, 1000, 2000, 5000].map(a => (
+                      <button key={a} type="button" className="btn btn-outline btn-sm" style={{ padding: "8px 4px", fontSize: 13, fontWeight: 600, borderRadius: 10 }} onClick={() => setTopup(String(a))}>
+                        ₹{a.toLocaleString()}
+                      </button>
+                    ))}
                   </div>
                 </div>
                 <StatusBar />
-                <button className="btn btn-primary btn-lg" onClick={handleTopup} disabled={txnState.s === "loading" || !topupAmt} style={{ width: "100%" }}>
-                  {txnState.s === "loading" ? "Please wait..." : `Pay ${topupAmt ? fmt(topupAmt) : "₹0"}`}
+                <button className="btn btn-primary btn-lg" onClick={handleTopup} disabled={txnState.s === "loading" || !topupAmt} style={{ width: "100%", borderRadius: 9999, marginTop: 4 }}>
+                  {txnState.s === "loading" ? "Initializing Gateway..." : `Proceed to Pay ${topupAmt ? fmt(topupAmt) : "₹0"} →`}
                 </button>
-                <p style={{ fontSize: 11, color: "#98a2b3", textAlign: "center", margin: 0 }}>Secured by Razorpay. We never store your card or bank details.</p>
+                <p style={{ fontSize: 11.5, color: "#888888", textAlign: "center", margin: 0 }}>🔒 Encrypted & secured by Razorpay. Zero transaction fees.</p>
               </div>
             )}
           </div>
@@ -46,50 +51,50 @@ export default function DashboardModals({
       {/* Loan proposal modal */}
       {modal === "loan" && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && close()}>
-          <div className="modal" style={{ maxWidth: 480, maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 18 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>New Loan</h3>
-              <button className="btn btn-ghost btn-sm" onClick={close}><Icon d={ic.x} size={16} /></button>
+          <div className="modal" style={{ maxWidth: 500, maxHeight: "90vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#171717", letterSpacing: "-0.3px" }}>Propose P2P Smart Loan</h3>
+              <button className="btn btn-ghost btn-sm" onClick={close} style={{ padding: 6, color: "#888888" }}><Icon d={ic.x} size={18} /></button>
             </div>
-            <form onSubmit={handleLoan} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, background: "#f2f4f7", borderRadius: 8, padding: 3 }}>
+            <form onSubmit={handleLoan} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, background: "#fafafa", border: "1px solid #ebebeb", borderRadius: 12, padding: 6 }}>
                 {["LENDER","BORROWER"].map(r => (
                   <button key={r} type="button" onClick={() => setLoan({ ...loanForm, role: r })}
-                    style={{ padding: 7, borderRadius: 6, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, background: loanForm.role === r ? "#fff" : "transparent", color: loanForm.role === r ? "#3b5bdb" : "#667085", boxShadow: loanForm.role === r ? "0 1px 3px rgba(0,0,0,0.06)" : "none" }}>
-                    {r === "LENDER" ? "I'm Lending" : "I'm Borrowing"}
+                    style={{ padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13, background: loanForm.role === r ? "#171717" : "transparent", color: loanForm.role === r ? "#ffffff" : "#667085", transition: "all 0.15s" }}>
+                    {r === "LENDER" ? "I am Lending Funds" : "I want to Borrow"}
                   </button>
                 ))}
               </div>
               <div>
-                <label className="label">Partner's Username</label>
-                <input className="input" required placeholder="Username" value={loanForm.partnerUsername} onChange={e => setLoan({ ...loanForm, partnerUsername: e.target.value })} />
+                <label className="label">Partner's Registered Username</label>
+                <input className="input" required placeholder="e.g. alex_kumar" value={loanForm.partnerUsername} onChange={e => setLoan({ ...loanForm, partnerUsername: e.target.value })} />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <div><label className="label">Amount (₹)</label>
-                  <input className="input" type="number" required value={loanForm.principalAmount} onChange={e => setLoan({ ...loanForm, principalAmount: e.target.value })} /></div>
-                <div><label className="label">Interest (%)</label>
-                  <input className="input" type="number" step="0.1" required value={loanForm.interestRate} onChange={e => setLoan({ ...loanForm, interestRate: e.target.value })} /></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div><label className="label">Principal Amount (₹)</label>
+                  <input className="input" type="number" required placeholder="5000" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }} value={loanForm.principalAmount} onChange={e => setLoan({ ...loanForm, principalAmount: e.target.value })} /></div>
+                <div><label className="label">Interest Rate (%)</label>
+                  <input className="input" type="number" step="0.1" required placeholder="5.0" value={loanForm.interestRate} onChange={e => setLoan({ ...loanForm, interestRate: e.target.value })} /></div>
                 <div><label className="label">Duration (Months)</label>
-                  <input className="input" type="number" min="1" max="60" required value={loanForm.durationMonths} onChange={e => setLoan({ ...loanForm, durationMonths: e.target.value })} /></div>
-                <div><label className="label">EMI Day</label>
+                  <input className="input" type="number" min="1" max="60" required placeholder="6" value={loanForm.durationMonths} onChange={e => setLoan({ ...loanForm, durationMonths: e.target.value })} /></div>
+                <div><label className="label">Monthly EMI Date</label>
                   <select className="input" value={loanForm.deductionDayOfMonth} onChange={e => setLoan({ ...loanForm, deductionDayOfMonth: e.target.value })}>
-                    {[1,5,10,15,20,25,28].map(d => <option key={d} value={d}>{d}th of month</option>)}
+                    {[1,5,10,15,20,25,28].map(d => <option key={d} value={d}>{d}th of every month</option>)}
                   </select></div>
               </div>
               {loanForm.principalAmount && (
-                <div style={{ background: "#eff4ff", borderRadius: 8, padding: "10px 12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  {[["Total Payable", fmt(loanCalc.total)], ["Monthly EMI", fmt(loanCalc.emi)]].map(([l, v]) => (
-                    <div key={l}><div style={{ fontSize: 11, color: "#3b5bdb", fontWeight: 600 }}>{l}</div><div style={{ fontSize: 14, fontWeight: 800, color: "#364fc7" }}>{v}</div></div>
+                <div style={{ background: "#fafafa", border: "1px solid #ebebeb", borderRadius: 12, padding: "12px 16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  {[["Total Repayment Value", fmt(loanCalc.total)], ["Estimated Monthly EMI", fmt(loanCalc.emi)]].map(([l, v]) => (
+                    <div key={l}><div style={{ fontSize: 11.5, color: "#888888", fontWeight: 700, textTransform: "uppercase" }}>{l}</div><div style={{ fontSize: 16, fontWeight: 800, color: "#171717", fontFamily: "'JetBrains Mono', monospace", marginTop: 2 }}>{v}</div></div>
                   ))}
                 </div>
               )}
               <div>
-                <label className="label">Title (optional)</label>
-                <input className="input" placeholder="e.g. Laptop purchase" value={loanForm.remarks} onChange={e => setLoan({ ...loanForm, remarks: e.target.value })} />
+                <label className="label">Loan Title or Purpose (optional)</label>
+                <input className="input" placeholder="e.g. MacBook Pro acquisition" value={loanForm.remarks} onChange={e => setLoan({ ...loanForm, remarks: e.target.value })} />
               </div>
               <StatusBar />
-              <button className="btn btn-primary btn-lg" type="submit" disabled={txnState.s === "loading"} style={{ width: "100%" }}>
-                {txnState.s === "loading" ? "Submitting..." : "Submit Proposal"}
+              <button className="btn btn-primary btn-lg" type="submit" disabled={txnState.s === "loading"} style={{ width: "100%", borderRadius: 9999, marginTop: 4 }}>
+                {txnState.s === "loading" ? "Submitting Proposal..." : "Send Credit Agreement →"}
               </button>
             </form>
           </div>
@@ -100,23 +105,23 @@ export default function DashboardModals({
       {modal === "accept" && modalData && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && close()}>
           <div className="modal">
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 18 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Accept Loan</h3>
-              <button className="btn btn-ghost btn-sm" onClick={close}><Icon d={ic.x} size={16} /></button>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#171717" }}>Accept Loan & Receive Funds</h3>
+              <button className="btn btn-ghost btn-sm" onClick={close} style={{ padding: 6, color: "#888888" }}><Icon d={ic.x} size={18} /></button>
             </div>
-            <div className="alert alert-info" style={{ marginBottom: 14 }}>
-              {fmt(modalData.principalAmount)} will be credited to your account. Monthly EMI of {fmt(modalData.emiAmount)} will auto-deduct on day {modalData.deductionDayOfMonth}.
+            <div style={{ padding: "14px 16px", background: "#f8f9fa", border: "1px solid #ebebeb", borderRadius: 12, fontSize: 13.5, color: "#475467", marginBottom: 18, lineHeight: 1.5 }}>
+              ⚡ <b>{fmt(modalData.principalAmount)}</b> will be credited directly to your available bank balance. An automated monthly EMI of <b>{fmt(modalData.emiAmount)}</b> will deduct on day {modalData.deductionDayOfMonth} of each month.
             </div>
             <div>
-              <label className="label">Enter Security PIN</label>
-              <input className="input" type="password" maxLength={4} placeholder="••••" style={{ maxWidth: 120, textAlign: "center", fontSize: 18, fontFamily: "JetBrains Mono, monospace", letterSpacing: 8 }}
-                value={pinInput} onChange={e => setPin(e.target.value)} />
+              <label className="label">Enter 4-Digit Security PIN to Authorize</label>
+              <input className="input" type="password" maxLength={4} placeholder="••••" autoFocus style={{ width: "100%", maxWidth: 160, textAlign: "center", fontSize: 22, fontFamily: "'JetBrains Mono', monospace", letterSpacing: 10, fontWeight: 700, margin: "0 auto", display: "block" }}
+                value={pinInput} onChange={e => setPin(e.target.value.replace(/\D/g, ""))} />
             </div>
             <StatusBar />
-            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-              <button className="btn btn-outline" style={{ flex: 1 }} onClick={close}>Cancel</button>
-              <button className="btn btn-green" style={{ flex: 2 }} onClick={handleAccept} disabled={txnState.s === "loading"}>
-                {txnState.s === "loading" ? "Processing..." : "Accept"}
+            <div style={{ display: "flex", gap: 12, marginTop: 22 }}>
+              <button type="button" className="btn btn-outline" style={{ flex: 1, borderRadius: 9999 }} onClick={close}>Cancel</button>
+              <button type="button" className="btn btn-primary" style={{ flex: 2, borderRadius: 9999 }} onClick={handleAccept} disabled={txnState.s === "loading" || pinInput.length !== 4}>
+                {txnState.s === "loading" ? "Disbursing Funds..." : "Sign PIN & Receive →"}
               </button>
             </div>
           </div>
@@ -127,27 +132,27 @@ export default function DashboardModals({
       {modal === "foreclose" && modalData && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && close()}>
           <div className="modal">
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 18 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Settle Loan Early</h3>
-              <button className="btn btn-ghost btn-sm" onClick={close}><Icon d={ic.x} size={16} /></button>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#171717" }}>Settle Loan Early</h3>
+              <button className="btn btn-ghost btn-sm" onClick={close} style={{ padding: 6, color: "#888888" }}><Icon d={ic.x} size={18} /></button>
             </div>
-            <div style={{ background: "#f8f9fb", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
-              {[["Remaining", fmt(modalData.remainingAmount)], ["Closure Fee", "₹0.00"], ["You Pay", fmt(modalData.remainingAmount)]].map(([l, v], i) => (
-                <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: i < 2 ? "1px solid #eaecf0" : "none", fontWeight: i === 2 ? 800 : 500, color: i === 2 ? "#1a1a2e" : "#667085", fontSize: i === 2 ? 14 : 13 }}>
-                  <span>{l}</span><span style={{ fontFamily: "JetBrains Mono, monospace", color: i === 1 ? "#2f9e44" : "inherit" }}>{v}</span>
+            <div style={{ background: "#fafafa", border: "1px solid #ebebeb", borderRadius: 12, padding: "14px 18px", marginBottom: 18 }}>
+              {[["Remaining Balance Due", fmt(modalData.remainingAmount)], ["Early Settle Penalty", "₹0.00 (Waived)"], ["Total Settle Payable", fmt(modalData.remainingAmount)]].map(([l, v], i) => (
+                <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: i < 2 ? "1px solid #ebebeb" : "none", fontWeight: i === 2 ? 800 : 500, color: i === 2 ? "#171717" : "#667085", fontSize: i === 2 ? 15 : 13.5 }}>
+                  <span>{l}</span><span style={{ fontFamily: "'JetBrains Mono', monospace", color: i === 1 ? "#2b8a3e" : "inherit" }}>{v}</span>
                 </div>
               ))}
             </div>
             <div>
-              <label className="label">Security PIN</label>
-              <input className="input" type="password" maxLength={4} placeholder="••••" style={{ maxWidth: 120, textAlign: "center", fontSize: 18, fontFamily: "JetBrains Mono, monospace", letterSpacing: 8 }}
-                value={pinInput} onChange={e => setPin(e.target.value)} />
+              <label className="label">Enter Security PIN to Settle</label>
+              <input className="input" type="password" maxLength={4} placeholder="••••" autoFocus style={{ width: "100%", maxWidth: 160, textAlign: "center", fontSize: 22, fontFamily: "'JetBrains Mono', monospace", letterSpacing: 10, fontWeight: 700, margin: "0 auto", display: "block" }}
+                value={pinInput} onChange={e => setPin(e.target.value.replace(/\D/g, ""))} />
             </div>
             <StatusBar />
-            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-              <button className="btn btn-outline" style={{ flex: 1 }} onClick={close}>Cancel</button>
-              <button className="btn btn-primary" style={{ flex: 2 }} onClick={handleForeclose} disabled={txnState.s === "loading"}>
-                {txnState.s === "loading" ? "Settling..." : "Confirm — ₹0 Fee"}
+            <div style={{ display: "flex", gap: 12, marginTop: 22 }}>
+              <button type="button" className="btn btn-outline" style={{ flex: 1, borderRadius: 9999 }} onClick={close}>Cancel</button>
+              <button type="button" className="btn btn-primary" style={{ flex: 2, borderRadius: 9999 }} onClick={handleForeclose} disabled={txnState.s === "loading" || pinInput.length !== 4}>
+                {txnState.s === "loading" ? "Settling..." : "Confirm — ₹0 Fee →"}
               </button>
             </div>
           </div>
@@ -157,26 +162,29 @@ export default function DashboardModals({
       {/* Receipt */}
       {modal === "receipt" && modalData && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && close()}>
-          <div className="modal">
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 18 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Receipt</h3>
-              <button className="btn btn-ghost btn-sm" onClick={close}><Icon d={ic.x} size={16} /></button>
+          <div className="modal" style={{ maxWidth: 420 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#171717" }}>Transaction Receipt</h3>
+              <button className="btn btn-ghost btn-sm" onClick={close} style={{ padding: 6, color: "#888888" }}><Icon d={ic.x} size={18} /></button>
             </div>
-            <div style={{ textAlign: "center", marginBottom: 18 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: "#ebfbee", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px" }}>
-                <Icon d={ic.check} size={22} stroke="#2f9e44" sw="2.5" />
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: modalData.status === "SUCCESS" ? "#ebfbee" : "#fff5f5", border: `1px solid ${modalData.status === "SUCCESS" ? "#b2f2bb" : "#ffc9c9"}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 10px" }}>
+                <Icon d={modalData.status === "SUCCESS" ? ic.check : ic.x} size={24} stroke={modalData.status === "SUCCESS" ? "#2b8a3e" : "#c50000"} sw="2.5" />
               </div>
-              <div style={{ fontSize: 24, fontWeight: 900, fontFamily: "JetBrains Mono, monospace" }}>{fmt(modalData.amount)}</div>
-              <span className={`badge badge-${modalData.status === "SUCCESS" ? "green" : "red"}`} style={{ marginTop: 6 }}>{modalData.status}</span>
+              <div style={{ fontSize: 28, fontWeight: 900, fontFamily: "'JetBrains Mono', monospace", color: "#171717" }}>{fmt(modalData.amount)}</div>
+              <span className={`badge badge-${modalData.status === "SUCCESS" ? "green" : "red"}`} style={{ marginTop: 6, fontWeight: 700 }}>{modalData.status}</span>
             </div>
-            <div style={{ background: "#f8f9fb", borderRadius: 10, padding: "12px 14px" }}>
-              {[["Reference", modalData.referenceId], ["Type", modalData.type], ["From", modalData.senderName || "Razorpay"], ["To", modalData.receiverName], ["Date", new Date(modalData.createdAt).toLocaleString("en-IN")], ["Note", modalData.description || "—"]].map(([l, v]) => (
-                <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #eaecf0", fontSize: 13, gap: 10 }}>
-                  <span style={{ color: "#98a2b3", fontWeight: 600, flexShrink: 0 }}>{l}</span>
-                  <span style={{ color: "#1a1a2e", fontWeight: 500, textAlign: "right", wordBreak: "break-all" }}>{v}</span>
+            <div style={{ background: "#fafafa", border: "1px solid #ebebeb", borderRadius: 12, padding: "14px 18px", marginBottom: 20 }}>
+              {[["Reference ID", modalData.referenceId], ["Transaction Type", modalData.type], ["Sender Account", modalData.senderName || "Razorpay Gateway"], ["Receiver Account", modalData.receiverName], ["Date & Time", new Date(modalData.createdAt).toLocaleString("en-IN")], ["Transfer Note", modalData.description || "—"]].map(([l, v], i) => (
+                <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: i < 5 ? "1px solid #ebebeb" : "none", fontSize: 13, gap: 12 }}>
+                  <span style={{ color: "#888888", fontWeight: 600, flexShrink: 0 }}>{l}</span>
+                  <span style={{ color: "#171717", fontWeight: 600, textAlign: "right", wordBreak: "break-all", fontFamily: l.includes("Reference") ? "'JetBrains Mono', monospace" : "inherit" }}>{v}</span>
                 </div>
               ))}
             </div>
+            <button type="button" className="btn btn-outline" style={{ width: "100%", borderRadius: 9999, fontWeight: 600 }} onClick={close}>
+              Done
+            </button>
           </div>
         </div>
       )}
