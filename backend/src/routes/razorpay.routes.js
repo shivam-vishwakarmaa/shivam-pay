@@ -69,7 +69,7 @@ router.post("/create-order", authMiddleware, paymentLimiter, async (req, res) =>
     const order = await razorpay.orders.create({
       amount: Math.round(amountNum * 100), // Razorpay uses paise
       currency: "INR",
-      receipt: `topup_${req.user.userId}_${Date.now()}`,
+      receipt: `tp_${req.user.userId.toString().slice(-8)}_${Date.now()}`,
       notes: {
         userId: req.user.userId,
         purpose: "ShivamPay Wallet Top-Up",
