@@ -19,14 +19,18 @@ export default function RegisterPage() {
     setLoading(true);
     setStatus({ type: "", msg: "" });
     try {
-      const res = await axios.post(`${API}/register/enter`, form);
+      const res = await axios.post(`${API}/register/enter`, form, { timeout: 15000 });
       localStorage.setItem("token", res.data.token);
       if (res.data.user) localStorage.setItem("user", JSON.stringify(res.data.user));
       setStatus({ type: "success", msg: "Account created! Initializing digital ledger..." });
       setTimeout(() => navigate("/dashboard"), 700);
     } catch (err) {
       setLoading(false);
-      setStatus({ type: "error", msg: err.response?.data?.message || "Registration failed." });
+      if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
+        setStatus({ type: "error", msg: "Connection timed out. Your backend is offline or cannot connect to MongoDB." });
+      } else {
+        setStatus({ type: "error", msg: err.response?.data?.message || "Registration failed. Please check backend connection." });
+      }
     }
   };
 

@@ -20,7 +20,7 @@ export default function GoogleSignInModal({ isOpen, onClose, onSuccess }) {
       const res = await axios.post(`${API}/auth/google-login`, {
         idToken,
         upiPin: pinToSubmit
-      });
+      }, { timeout: 15000 }); // 15 second timeout to prevent infinite hang
 
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
@@ -28,12 +28,14 @@ export default function GoogleSignInModal({ isOpen, onClose, onSuccess }) {
       onSuccess(res.data.user);
     } catch (err) {
       setLoading(false);
-      if (err.response?.status === 400 && err.response?.data?.requirePin) {
+      if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
+         setError("Connection timed out. Your backend is offline or cannot connect to MongoDB.");
+      } else if (err.response?.status === 400 && err.response?.data?.requirePin) {
         setRequirePin(true);
         setCachedIdToken(idToken);
         setError("New account detected! Please set up your 4-digit security PIN below to finalize.");
       } else {
-        setError(err.response?.data?.message || "Google Sign-In verification failed. Please try again.");
+        setError(err.response?.data?.message || "Google Sign-In verification failed. Please check backend connection.");
       }
     }
   };
