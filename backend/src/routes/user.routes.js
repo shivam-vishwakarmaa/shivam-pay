@@ -33,4 +33,37 @@ router.get("/balance", authMiddleware, async (req, res) => {
     }
 });
 
+const Loan = require("../models/Loan.model");
+const { getCreditLimit } = require("../utils/creditLimit");
+
+// Get trust summary for a specific user
+router.get("/users/:username/trust-summary", authMiddleware, async (req, res) => {
+    try {
+        const username = req.params.username.toLowerCase().trim();
+        const user = await User.findOne({ username }).select("trustScore completedLoansAsBorrower onTimeEmiCount missedEmiCount");
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+        
+        const limit = getCreditLimit(user.trustScore || 50);
+        const borrowerActiveLoans = await Loan.find({ borrowerId: user._id, status: { $in: ['ACTIVE', 'OVERDUE'] } });
+        const currentExposure = borrowerActiveLoans.reduce((sum, l) => sum + l.remainingAmount, 0);
+        const availableToBorrow = Math.max(0, limit - currentExposure);
+
+        res.json({
+            success: true,
+            trustScore: user.trustScore || 50,
+            completedLoansAsBorrower: user.completedLoansAsBorrower || 0,
+            onTimeEmiCount: user.onTimeEmiCount || 0,
+            missedEmiCount: user.missedEmiCount || 0,
+            creditLimit: limit,
+            currentExposure,
+            availableToBorrow
+        });
+    } catch (e) {
+        console.error("Trust summary error:", e);
+        res.status(500).json({ success: false, message: "Error fetching trust summary." });
+    }
+});
+
 module.exports = router;

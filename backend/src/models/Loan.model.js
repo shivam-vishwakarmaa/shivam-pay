@@ -13,12 +13,13 @@ const loanSchema = mongoose.Schema({
     remainingInstallments: { type: Number, required: true },
     remainingAmount: { type: Number, required: true },
     deductionDayOfMonth: { type: Number, required: true, min: 1, max: 28, default: 5 },
-    nextDueDate: { type: Date, required: true },
+    nextDueDate: { type: Date },
     status: { 
         type: String, 
-        enum: ['PENDING', 'ACTIVE', 'COMPLETED', 'FORECLOSED', 'OVERDUE', 'REJECTED'],
+        enum: ['PENDING', 'ACTIVE', 'COMPLETED', 'REJECTED', 'OVERDUE', 'FORECLOSED'], 
         default: 'PENDING' 
     },
+    hadOverdue: { type: Boolean, default: false },
     remarks: String
 }, { timestamps: true });
 

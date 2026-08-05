@@ -1,11 +1,32 @@
-import React from "react";
-
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { API } from "../../config/api";
 export default function DashboardModals({
   modal, modalData, close, rzpCfg, topupAmt, setTopup,
   handleTopup, handleLoan, handleAccept, handleForeclose,
   loanForm, setLoan, loanCalc, pinInput, setPin,
   txnState, StatusBar, fmt, Icon, ic
 }) {
+  const [trustProfile, setTrustProfile] = useState(null);
+  const [loadingTrust, setLoadingTrust] = useState(false);
+
+  useEffect(() => {
+    if (modal !== "loan" || !loanForm?.partnerUsername) {
+      setTrustProfile(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setLoadingTrust(true);
+      axios.get(`${API}/users/${loanForm.partnerUsername}/trust-summary`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      })
+      .then(res => setTrustProfile(res.data))
+      .catch(() => setTrustProfile(null))
+      .finally(() => setLoadingTrust(false));
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [modal, loanForm?.partnerUsername]);
+
   return (
     <>
       {/* Add Money Modal */}
@@ -69,6 +90,32 @@ export default function DashboardModals({
                 <label className="label">Partner's Registered Username</label>
                 <input className="input" required placeholder="e.g. alex_kumar" value={loanForm.partnerUsername} onChange={e => setLoan({ ...loanForm, partnerUsername: e.target.value })} />
               </div>
+              
+              {loanForm.role === "LENDER" && loanForm.partnerUsername && (
+                <div style={{ background: "#f8f9fa", border: "1px solid #ebebeb", borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#888888", marginBottom: 8, textTransform: "uppercase" }}>Borrower Trust Profile</div>
+                  {loadingTrust ? (
+                    <div style={{ fontSize: 13, color: "#667085" }}>Analyzing reputation...</div>
+                  ) : trustProfile ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                      <div>
+                        <div style={{ fontSize: 11, color: "#888" }}>Trust Score</div>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: trustProfile.trustScore >= 80 ? "#2b8a3e" : trustProfile.trustScore >= 50 ? "#e67700" : "#c50000" }}>{trustProfile.trustScore}/100</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, color: "#888" }}>Completed</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#171717" }}>{trustProfile.completedLoansAsBorrower}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, color: "#888" }}>Missed EMIs</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: trustProfile.missedEmiCount > 0 ? "#c50000" : "#171717" }}>{trustProfile.missedEmiCount}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 13, color: "#c50000", fontWeight: 600 }}>User not found. Cannot proceed.</div>
+                  )}
+                </div>
+              )}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div><label className="label">Principal Amount (₹)</label>
                   <input className="input" type="number" required placeholder="5000" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }} value={loanForm.principalAmount} onChange={e => setLoan({ ...loanForm, principalAmount: e.target.value })} /></div>

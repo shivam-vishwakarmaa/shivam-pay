@@ -8,6 +8,7 @@ const Loan = require('../models/Loan.model');
 const Transaction = require('../models/Transaction.model');
 const Notification = require('../models/Notification.model');
 const { runEmiDeductionEngine } = require('../cron/emiCron');
+const { getCreditLimit } = require('../utils/creditLimit');
 
 // Get all loans involving current user (as lender or borrower)
 router.get('/my-loans', authMiddleware, async (req, res) => {
@@ -63,6 +64,27 @@ router.post('/propose', authMiddleware, async (req, res) => {
         const totalPayable = Number((principal + interestAmount).toFixed(2));
         const emiAmount = Number((totalPayable / months).toFixed(2));
 
+        // Trust System: Prior transaction check
+        const priorTransaction = await Transaction.findOne({
+            $or: [
+                { senderId: currentUser._id, receiverId: partnerUser._id },
+                { senderId: partnerUser._id, receiverId: currentUser._id }
+            ]
+        });
+
+        if (!priorTransaction) {
+            return res.status(400).json({ success: false, message: "A loan can only be proposed between users who have transacted before. Please send a small payment first to establish a connection." });
+        }
+
+        // Trust System: Credit limit check
+        const limit = getCreditLimit(borrower.trustScore || 50);
+        const borrowerActiveLoans = await Loan.find({ borrowerId: borrower._id, status: { $in: ['ACTIVE', 'OVERDUE'] } });
+        const currentExposure = borrowerActiveLoans.reduce((sum, l) => sum + l.remainingAmount, 0);
+
+        if (currentExposure + totalPayable > limit) {
+            return res.status(400).json({ success: false, message: `Loan rejected: this would exceed the borrower's total credit limit of ₹${limit}. Current active exposure: ₹${currentExposure}.` });
+        }
+        
         const now = new Date();
         const dueDay = deductionDayOfMonth || 5;
         const nextDueDate = new Date(now.getFullYear(), now.getMonth() + 1, dueDay);
@@ -130,6 +152,15 @@ router.post('/accept/:id', authMiddleware, pinLimiter, async (req, res) => {
 
         const lender = await User.findById(loan.lenderId);
         const borrower = await User.findById(loan.borrowerId);
+
+        // Trust System: Re-evaluate credit limit at time of acceptance
+        const limit = getCreditLimit(borrower.trustScore || 50);
+        const borrowerActiveLoans = await Loan.find({ borrowerId: borrower._id, status: { $in: ['ACTIVE', 'OVERDUE'] } });
+        const currentExposure = borrowerActiveLoans.reduce((sum, l) => sum + l.remainingAmount, 0);
+
+        if (currentExposure + loan.totalPayableAmount > limit) {
+            return res.status(400).json({ success: false, message: `Loan acceptance failed: this exceeds the borrower's total credit limit of ₹${limit}. Current active exposure: ₹${currentExposure}.` });
+        }
 
         if (lender.bankbalance < loan.principalAmount) {
             return res.status(400).json({ success: false, message: `Lender (${lender.name}) has insufficient funds in wallet to disburse this loan.` });
@@ -264,6 +295,12 @@ router.post('/foreclose/:id', authMiddleware, pinLimiter, async (req, res) => {
         loan.remainingAmount = 0;
         loan.remainingInstallments = 0;
         await loan.save();
+
+        if (!loan.hadOverdue) {
+            borrower.trustScore = Math.min(100, (borrower.trustScore || 50) + 5);
+            borrower.completedLoansAsBorrower = (borrower.completedLoansAsBorrower || 0) + 1;
+            await borrower.save();
+        }
 
         const refId = `FORECLOSE-${Date.now()}-${Math.floor(Math.random()*1000)}`;
         await Transaction.create({

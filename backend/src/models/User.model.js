@@ -15,7 +15,11 @@ const userSchema = mongoose.Schema({
         default: 0
     },
     resetOtp: { type: String, default: null }, // Hashed 6-digit OTP for password/PIN recovery
-    resetOtpExpire: { type: Date, default: null } // OTP expiration timestamp (10 mins)
+    resetOtpExpire: { type: Date, default: null }, // OTP expiration timestamp (10 mins)
+    trustScore: { type: Number, default: 50, min: 0, max: 100 },
+    completedLoansAsBorrower: { type: Number, default: 0 },
+    onTimeEmiCount: { type: Number, default: 0 },
+    missedEmiCount: { type: Number, default: 0 }
 }, { timestamps: true });
 
 module.exports = mongoose.model("User", userSchema);
