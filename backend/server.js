@@ -12,6 +12,7 @@ const routes = require('./src/routes');
 const { initEmiCron } = require('./src/cron/emiCron');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Production-ready CORS setup allowing cross-origin requests from deployed frontends (Vercel/Netlify)
 app.use(cors({

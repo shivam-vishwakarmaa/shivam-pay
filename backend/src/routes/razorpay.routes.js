@@ -9,8 +9,8 @@ const { paymentLimiter } = require("../middlewares/rateLimiter.middleware");
 
 // Safely initialize Razorpay (only if keys are configured)
 let razorpay = null;
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
+const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim().replace(/^["']|["']$/g, '');
+const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || "").trim().replace(/^["']|["']$/g, '');
 
 const isRazorpayConfigured =
   RAZORPAY_KEY_ID &&

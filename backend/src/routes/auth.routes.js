@@ -314,26 +314,22 @@ router.post("/auth/send-otp", authLimiter, async (req, res) => {
       $or: [{ username: cleanId }, { email: cleanId }]
     });
 
-    if (!user || !user.email) {
-      return res.status(404).json({ success: false, message: "No account found with a registered email matching that identifier." });
+    const genericSuccessMessage = "If an account with that identifier exists, a verification code has been sent to the registered email.";
+
+    if (user && user.email) {
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const hashedOtp = await bcrypt.hash(otpCode, 10);
+
+      user.resetOtp = hashedOtp;
+      user.resetOtpExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 mins expiry
+      await user.save();
+
+      await sendEmailOtp(user.email, user.name, otpCode);
     }
-
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const hashedOtp = await bcrypt.hash(otpCode, 10);
-
-    user.resetOtp = hashedOtp;
-    user.resetOtpExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 mins expiry
-    await user.save();
-
-    const sendResult = await sendEmailOtp(user.email, user.name, otpCode);
 
     res.status(200).json({
       success: true,
-      message: sendResult.mode === "SMTP"
-        ? `A 6-digit verification code has been sent to your email (${user.email}).`
-        : `[DEMO MODE] Verification code generated for ${user.email}. Check server logs or enter: ${otpCode}`,
-      demoOtp: sendResult.mode !== "SMTP" ? otpCode : undefined,
-      emailHint: user.email.replace(/(^..).*(@.*$)/, "$1***$2")
+      message: genericSuccessMessage
     });
   } catch (err) {
     console.error("Error generating OTP:", err);
